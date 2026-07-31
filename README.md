@@ -38,21 +38,41 @@ curl -X POST http://localhost:8000/query \
 
 ## Architecture
 
-```
-┌─────────────┐     ┌─────────────┐     ┌──────────────┐
-│   Ingest    │────▶│  Chunking   │────▶│  pgvector    │
-│  (PDF/HTML) │     │  (Technical)│     │  (PostgreSQL)│
-└─────────────┘     └─────────────┘     └──────┬───────┘
-                                               │
-                    ┌─────────────┐            │
-                    │   Query     │◀───────────┘
-                    │  (FastAPI)  │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  LangChain  │
-                    │  Retrieval  │
-                    └─────────────┘
+```mermaid
+graph TD
+    subgraph Ingestion
+        PDF[PDF Manuals] --> PDFLoader[PyMuPDF Loader]
+        HTML[Forum HTML] --> HTMLLoader[BeautifulSoup Loader]
+        JSON[Forum JSON] --> JSONLoader[JSON Loader]
+        PDFLoader --> Pipeline[Ingestion Pipeline]
+        HTMLLoader --> Pipeline
+        JSONLoader --> Pipeline
+    end
+
+    subgraph Chunking
+        Pipeline --> MarkdownSplitter[MarkdownHeaderTextSplitter]
+        MarkdownSplitter -->|Headers found| Chunks[Chunks with metadata]
+        MarkdownSplitter -->|No headers| RecursiveSplitter[RecursiveCharacterTextSplitter]
+        RecursiveSplitter --> Chunks
+    end
+
+    subgraph Storage
+        Chunks --> Embeddings[Sentence Transformers]
+        Embeddings --> PGVector[pgvector / PostgreSQL 16]
+        PGVector --> |IVFFlat index| VectorSearch
+        PGVector --> |GIN index| MetadataFilter
+    end
+
+    subgraph Query
+        UserQuery[User Question] --> VectorSearch
+        MetadataFilter --> VectorSearch
+        VectorSearch --> Retriever[LangChain Retriever]
+        Retriever --> LLM[LLM<br/>(Ollama/OpenAI/Anthropic)]
+        LLM --> Answer[Answer with citations]
+    end
+
+    style PGVector fill:#336791,color:#fff
+    style LLM fill:#f04e23,color:#fff
 ```
 
 ## Configuration
@@ -146,21 +166,44 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 
 ## Project Structure
 
-```
-energy-data-rag-pipeline/
-├── src/energy_rag/
-│   ├── config.py              # Pydantic settings
-│   ├── ingestion/             # PDF, forum loaders
-│   ├── chunking/              # Technical chunking strategies
-│   ├── storage/               # pgvector models & repository
-│   ├── retrieval/             # LangChain chains, citations
-│   └── api/                   # FastAPI routes & schemas
-├── tests/
-├── scripts/                   # Ingestion CLI scripts
-├── sql/init.sql               # Database schema
-├── docker-compose.yml
-├── Dockerfile
-└── pyproject.toml
+```mermaid
+graph TD
+    Root[energy-data-rag-pipeline]
+    Root --> Src[src/energy_rag]
+    Root --> Tests[tests/]
+    Root --> Scripts[scripts/]
+    Root --> SQL[sql/]
+    Root --> Docker[docker-compose.yml]
+    Root --> Dockerfile[Dockerfile]
+    Root --> PyProject[pyproject.toml]
+
+    Src --> Config[config.py]
+    Src --> Ingestion[ingestion/]
+    Src --> Chunking[chunking/]
+    Src --> Storage[storage/]
+    Src --> Retrieval[retrieval/]
+    Src --> API[api/]
+
+    Ingestion --> PDFLoader[pdf_loader.py]
+    Ingestion --> ForumLoader[forum_loader.py]
+    Ingestion --> Pipeline[pipeline.py]
+
+    Chunking --> Technical[technical.py]
+
+    Storage --> Models[models.py]
+    Storage --> PgVector[pgvector.py]
+    Storage --> Repository[repository.py]
+
+    Retrieval --> Chain[chain.py]
+    Retrieval --> Citations[citations.py]
+    Retrieval --> Rerank[rerank.py]
+
+    API --> Main[main.py]
+    API --> Schemas[schemas.py]
+    API --> Routes[routes/]
+    Routes --> Health[health.py]
+    Routes --> Query[query.py]
+    Routes --> Ingest[ingest.py]
 ```
 
 ## License
