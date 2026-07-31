@@ -38,6 +38,8 @@ curl -X POST http://localhost:8000/query \
 
 ## Architecture
 
+### Data Flow
+
 ```mermaid
 graph TD
     subgraph Ingestion
@@ -67,12 +69,26 @@ graph TD
         UserQuery[User Question] --> VectorSearch
         MetadataFilter --> VectorSearch
         VectorSearch --> Retriever[LangChain Retriever]
-        Retriever --> LLM[LLM<br/>(Ollama/OpenAI/Anthropic)]
+        Retriever --> LLM[LLM (Ollama/OpenAI/Anthropic)]
         LLM --> Answer[Answer with citations]
     end
 
     style PGVector fill:#336791,color:#fff
     style LLM fill:#f04e23,color:#fff
+```
+
+### Component Overview
+
+```mermaid
+graph LR
+    A[Ingestion\nPDF + Forum] --> B[Chunking\nMarkdown + Recursive]
+    B --> C[Embeddings\nall-MiniLM-L6-v2]
+    C --> D[pgvector\nPostgreSQL 16]
+    D --> E[Retrieval\nLangChain + LLM]
+    E --> F[Answer + Citations]
+    
+    style D fill:#336791,color:#fff
+    style E fill:#f04e23,color:#fff
 ```
 
 ## Configuration
