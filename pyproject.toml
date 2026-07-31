@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "energy-rag-pipeline"
+version = "0.1.0"
+description = "RAG pipeline for Victron/energy documentation with pgvector and LangChain"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+dependencies = [
+    # Core API
+    "fastapi>=0.139.0",
+    "uvicorn>=0.51.0",
+    "pydantic-settings>=2.6.0",
+    "python-multipart>=0.0.20",
+
+    # LangChain
+    "langchain>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-postgres>=0.0.2",
+    "langchain-huggingface>=0.1.0",
+
+    # Vector DB
+    "pgvector>=0.2.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",
+
+    # Document ingestion
+    "pymupdf>=1.23.0",
+    "beautifulsoup4>=4.12.0",
+    "requests>=2.31.0",
+    "markdown>=3.6.0",
+
+    # Embeddings
+    "sentence-transformers>=3.0.0",
+    "torch>=2.4.0",
+
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "structlog>=25.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.5.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pylint>=3.2.0",
+    "pre-commit>=3.8.0",
+]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28.0",
+    "faker>=25.0.0",
+]
+
+[project.scripts]
+energy-rag-api = "energy_rag.api.main:main"
+energy-rag-ingest = "scripts.ingest_manuals:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["energy_rag*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = [
+    "E722",  # Do not use bare except
+    "F841",  # Local variable assigned but never used
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402", "S101"]
+
+[tool.pylint.messages_control]
+disable = [
+    "E0401",  # Unable to import (system libs not in venv)
+    "C0103",  # Invalid name (legacy naming conventions)
+    "C0301",  # Line too long
+    "W1203",  # f-string logging (style preference)
+    "R0902",  # Too many instance attributes
+    "R0903",  # Too few public methods
+    "R0914",  # Too many local variables
+    "R0915",  # Too many statements
+    "C0116",  # Missing function docstring
+    "C0413",  # Wrong import position
+    "W0718",  # Catching general Exception
+    "W0613",  # Unused argument
+]
