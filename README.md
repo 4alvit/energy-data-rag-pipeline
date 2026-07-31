@@ -69,7 +69,7 @@ graph TD
         UserQuery[User Question] --> VectorSearch
         MetadataFilter --> VectorSearch
         VectorSearch --> Retriever[LangChain Retriever]
-        Retriever --> LLM[LLM (Ollama/OpenAI/Anthropic)]
+        Retriever --> LLM["LLM (Ollama/OpenAI/Anthropic)"]
         LLM --> Answer[Answer with citations]
     end
 
