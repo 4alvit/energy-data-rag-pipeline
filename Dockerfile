@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # Build stage
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de AS builder
 
 # Install system dependencies for building
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -21,7 +21,7 @@ COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen --no-dev
 
 # Runtime stage
-FROM python:3.12-slim AS runtime
+FROM python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de AS runtime
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
