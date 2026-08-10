@@ -1,5 +1,14 @@
 # Energy Data RAG Pipeline
 
+![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Build](https://github.com/victron-venus/energy-data-rag-pipeline/actions/workflows/ci.yml/badge.svg)
+![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)
+![Type Checking: Pylint](https://img.shields.io/badge/type%20checking-pylint-blue.svg)
+![Tests](https://img.shields.io/badge/tests-pytest-green.svg)
+![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=victron-venus_energy-data-rag-pipeline&metric=alert_status)
+![Docker](https://img.shields.io/badge/docker-compose-2496ED.svg?logo=docker&logoColor=white)
+
 RAG (Retrieval-Augmented Generation) pipeline for Victron Energy documentation and community knowledge. Built with FastAPI, LangChain, pgvector, and PostgreSQL.
 
 ## Features
