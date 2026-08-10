@@ -11,7 +11,9 @@ class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000, description="User question")
     top_k: int = Field(default=5, ge=1, le=20, description="Number of documents to retrieve")
     filters: dict[str, Any] | None = Field(default=None, description="Metadata filters")
-    include_citations: bool = Field(default=True, description="Include source citations in response")
+    include_citations: bool = Field(
+        default=True, description="Include source citations in response"
+    )
 
 
 class SourceResponse(BaseModel):

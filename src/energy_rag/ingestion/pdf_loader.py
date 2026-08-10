@@ -133,10 +133,12 @@ def load_victron_manual(file_path: Path) -> list[Document]:
     doc_type = _detect_doc_type(file_path.name, documents)
 
     for doc in documents:
-        doc.metadata.update({
-            "product": product,
-            "doc_type": doc_type,
-        })
+        doc.metadata.update(
+            {
+                "product": product,
+                "doc_type": doc_type,
+            }
+        )
 
     return documents
 
@@ -146,14 +148,30 @@ def _detect_product(filename: str, documents: list[Document]) -> str:
     filename_lower = filename.lower()
 
     products = [
-        "MultiPlus", "MultiPlus-II", "Quattro", "EasySolar", "EasyPlus",
-        "Cerbo GX", "Color Control GX", "Venus GX", "Octo GX",
-        "SmartSolar", "BlueSolar", "MPPT",
-        "BMV-700", "BMV-712", "SmartShunt", "Lynx Shunt",
-        "Phoenix Inverter", "Phoenix Charger",
-        "Skylla-i", "Skylla-TG",
-        "BatteryProtect", "BatteryMonitor",
-        "ESS", "Energy Storage System",
+        "MultiPlus",
+        "MultiPlus-II",
+        "Quattro",
+        "EasySolar",
+        "EasyPlus",
+        "Cerbo GX",
+        "Color Control GX",
+        "Venus GX",
+        "Octo GX",
+        "SmartSolar",
+        "BlueSolar",
+        "MPPT",
+        "BMV-700",
+        "BMV-712",
+        "SmartShunt",
+        "Lynx Shunt",
+        "Phoenix Inverter",
+        "Phoenix Charger",
+        "Skylla-i",
+        "Skylla-TG",
+        "BatteryProtect",
+        "BatteryMonitor",
+        "ESS",
+        "Energy Storage System",
     ]
 
     for product in products:

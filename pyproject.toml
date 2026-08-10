@@ -53,6 +53,7 @@ dev = [
 test = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
     "httpx>=0.28.0",
     "faker>=25.0.0",
 ]
@@ -79,6 +80,7 @@ target-version = "py312"
 ignore = [
     "E722",  # Do not use bare except
     "F841",  # Local variable assigned but never used
+    "BLE001",  # Do not catch blind Exception (defensive ingestion pipeline)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -89,6 +91,17 @@ disable = [
     "E0401",  # Unable to import (system libs not in venv)
     "C0103",  # Invalid name (legacy naming conventions)
     "C0301",  # Line too long
+    "C0415",  # Import outside toplevel (lazy imports for optional providers)
+    "E1101",  # no-member false positives (pydantic/third-party)
+    "E1102",  # not-callable false positives (lazy imports)
+    "E1120",  # no-value-for-parameter (third-party signature inference)
+    "E1123",  # unexpected-keyword-arg (third-party signature inference)
+    "R0912",  # Too many branches
+    "R0913",  # Too many arguments
+    "R0917",  # Too many positional arguments
+    "R1702",  # Too many nested blocks
+    "W0603",  # Using the global statement (cached singletons)
+    "W0621",  # Redefining name from outer scope (module-level app pattern)
     "W1203",  # f-string logging (style preference)
     "R0902",  # Too many instance attributes
     "R0903",  # Too few public methods

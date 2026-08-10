@@ -3,7 +3,7 @@
 import json
 import logging
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -110,7 +110,9 @@ def load_forum_json(file_path: Path) -> Iterator[Document]:
             "source_type": "forum_json",
             "title": post.get("title", ""),
             "url": post.get("url", ""),
-            "author": post.get("author", {}).get("username", "") if isinstance(post.get("author"), dict) else post.get("author", ""),
+            "author": post.get("author", {}).get("username", "")
+            if isinstance(post.get("author"), dict)
+            else post.get("author", ""),
             "created_at": post.get("created_at", post.get("date", "")),
             "tags": post.get("tags", []),
             "score": post.get("score", post.get("votes", 0)),
@@ -196,7 +198,7 @@ def fetch_forum_url(url: str, selectors: dict | None = None) -> Iterator[Documen
         "forum_type": forum_type,
         "title": title,
         "url": url,
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
     }
 
     for key, selector in sel["metadata"].items():

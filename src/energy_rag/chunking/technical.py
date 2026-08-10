@@ -1,7 +1,7 @@
 """Technical documentation chunking strategies."""
 
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 from langchain_core.documents import Document
 from langchain_text_splitters import (
@@ -110,7 +110,7 @@ class TechnicalChunker:
 class ChunkingStrategy:
     """Factory for different chunking strategies."""
 
-    STRATEGIES = {
+    STRATEGIES: ClassVar[dict[str, object]] = {
         "technical": TechnicalChunker,
         "markdown": "MarkdownHeaderTextSplitter",
         "recursive": "RecursiveCharacterTextSplitter",
@@ -138,6 +138,7 @@ class ChunkingStrategy:
 
         if strategy == "fixed":
             from langchain_text_splitters import CharacterTextSplitter
+
             return CharacterTextSplitter(
                 chunk_size=kwargs.get("chunk_size", settings.chunk_size),
                 chunk_overlap=kwargs.get("chunk_overlap", settings.chunk_overlap),

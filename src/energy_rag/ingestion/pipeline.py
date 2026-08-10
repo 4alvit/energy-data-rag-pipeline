@@ -37,14 +37,15 @@ class IngestionPipeline:
                 if self.chunker:
                     documents = self.chunker.chunk_documents(documents)
 
-                for doc in documents:
-                    yield doc
+                yield from documents
 
             except Exception as e:
                 logger.error("Failed to process %s: %s", pdf_file, e)
                 continue
 
-    def ingest_forum_html_directory(self, directory: Path, recursive: bool = True) -> Iterator[Document]:
+    def ingest_forum_html_directory(
+        self, directory: Path, recursive: bool = True
+    ) -> Iterator[Document]:
         """Ingest all HTML forum files from a directory."""
         pattern = "**/*.html" if recursive else "*.html"
         html_files = list(directory.glob(pattern))
@@ -59,14 +60,15 @@ class IngestionPipeline:
                 if self.chunker:
                     documents = self.chunker.chunk_documents(documents)
 
-                for doc in documents:
-                    yield doc
+                yield from documents
 
             except Exception as e:
                 logger.error("Failed to process %s: %s", html_file, e)
                 continue
 
-    def ingest_forum_json_directory(self, directory: Path, recursive: bool = True) -> Iterator[Document]:
+    def ingest_forum_json_directory(
+        self, directory: Path, recursive: bool = True
+    ) -> Iterator[Document]:
         """Ingest all JSON forum files from a directory."""
         pattern = "**/*.json" if recursive else "*.json"
         json_files = list(directory.glob(pattern))
@@ -81,8 +83,7 @@ class IngestionPipeline:
                 if self.chunker:
                     documents = self.chunker.chunk_documents(documents)
 
-                for doc in documents:
-                    yield doc
+                yield from documents
 
             except Exception as e:
                 logger.error("Failed to process %s: %s", json_file, e)
@@ -98,8 +99,7 @@ class IngestionPipeline:
             if self.chunker:
                 documents = self.chunker.chunk_documents(documents)
 
-            for doc in documents:
-                yield doc
+            yield from documents
 
         except Exception as e:
             logger.error("Failed to process community export: %s", e)

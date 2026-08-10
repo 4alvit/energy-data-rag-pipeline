@@ -14,7 +14,6 @@ class Base(DeclarativeBase):
     """Base class for all models."""
 
 
-
 class DocumentModel(Base):
     """Document with embedding and metadata."""
 

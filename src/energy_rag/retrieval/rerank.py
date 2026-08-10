@@ -19,6 +19,7 @@ class Reranker:
         if self._model is None:
             try:
                 from sentence_transformers import CrossEncoder
+
                 self._model = CrossEncoder(self.model_name, max_length=512)
                 logger.info("Loaded reranker model: %s", self.model_name)
             except ImportError:

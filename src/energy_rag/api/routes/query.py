@@ -59,9 +59,9 @@ async def query_rag_endpoint(request: QueryRequest) -> QueryResponse:
             processing_time_ms=result["processing_time_ms"],
         )
 
-    except Exception:
+    except Exception as exc:
         logger.exception("Query failed")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @router.get("/stats")
