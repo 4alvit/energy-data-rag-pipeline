@@ -19,7 +19,9 @@ router = APIRouter(prefix="/ingest", tags=["ingest"])
 
 
 @router.post("", response_model=IngestResponse)
-async def ingest_documents(request: IngestRequest, background_tasks: BackgroundTasks) -> IngestResponse:
+async def ingest_documents(
+    request: IngestRequest, background_tasks: BackgroundTasks
+) -> IngestResponse:
     """
     Trigger document ingestion.
 
@@ -81,6 +83,7 @@ async def _run_ingestion(
                         documents.extend(pipeline.ingest_pdf_directory(path))
                     else:
                         from energy_rag.ingestion.pdf_loader import load_victron_manual
+
                         documents.extend(load_victron_manual(path))
 
                 elif source_type == "forum_html":
@@ -88,6 +91,7 @@ async def _run_ingestion(
                         documents.extend(pipeline.ingest_forum_html_directory(path))
                     else:
                         from energy_rag.ingestion.forum_loader import load_forum_html
+
                         documents.extend(load_forum_html(path))
 
                 elif source_type == "forum_json":
@@ -95,6 +99,7 @@ async def _run_ingestion(
                         documents.extend(pipeline.ingest_forum_json_directory(path))
                     else:
                         from energy_rag.ingestion.forum_loader import load_forum_json
+
                         documents.extend(load_forum_json(path))
 
                 else:
@@ -122,7 +127,12 @@ async def _run_ingestion(
                 documents_processed=docs_processed,
                 chunks_created=chunks_created,
             )
-            logger.info("Ingestion completed: run_id=%s, docs=%d, chunks=%d", run_id, docs_processed, chunks_created)
+            logger.info(
+                "Ingestion completed: run_id=%s, docs=%d, chunks=%d",
+                run_id,
+                docs_processed,
+                chunks_created,
+            )
 
         except Exception:
             logger.exception("Ingestion failed for run %s", run_id)

@@ -61,6 +61,7 @@ def get_llm():
     if _llm is None:
         if settings.llm_provider == "ollama":
             from langchain_community.llms import Ollama
+
             _llm = Ollama(
                 model=settings.llm_model,
                 base_url=settings.ollama_base_url,
@@ -68,6 +69,7 @@ def get_llm():
             )
         elif settings.llm_provider == "openai":
             from langchain_openai import ChatOpenAI
+
             _llm = ChatOpenAI(
                 model=settings.llm_model,
                 api_key=settings.openai_api_key,
@@ -75,6 +77,7 @@ def get_llm():
             )
         elif settings.llm_provider == "anthropic":
             from langchain_anthropic import ChatAnthropic
+
             _llm = ChatAnthropic(
                 model=settings.llm_model,
                 api_key=settings.anthropic_api_key,

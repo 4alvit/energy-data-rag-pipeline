@@ -43,9 +43,7 @@ class DocumentRepository:
 
     async def get_by_id(self, doc_id: uuid.UUID) -> DocumentModel | None:
         """Get document by ID."""
-        result = await self.session.execute(
-            select(DocumentModel).where(DocumentModel.id == doc_id)
-        )
+        result = await self.session.execute(select(DocumentModel).where(DocumentModel.id == doc_id))
         return result.scalar_one_or_none()
 
     async def similarity_search(

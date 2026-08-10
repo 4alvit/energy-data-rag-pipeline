@@ -12,6 +12,12 @@ env/
 .mypy_cache/
 .ruff_cache/
 
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+.coverage.*
+
 # Build
 dist/
 build/

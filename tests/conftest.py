@@ -6,9 +6,8 @@ from collections.abc import AsyncGenerator
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from energy_rag.storage.models import Base
 from energy_rag.config import Settings
-
+from energy_rag.storage.models import Base
 
 # Test database URL (uses test database)
 TEST_DATABASE_URL = "postgresql+asyncpg://rag:testpass@localhost:5432/energy_rag_test"
@@ -43,15 +42,12 @@ async def test_engine():
 @pytest.fixture
 async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
     """Create test database session with transaction rollback."""
-    async_session = async_sessionmaker(
-        test_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
-    async with async_session() as session:
-        async with session.begin():
-            yield session
-            # Rollback after each test
-            await session.rollback()
+    async with async_session() as session, session.begin():
+        yield session
+        # Rollback after each test
+        await session.rollback()
 
 
 @pytest.fixture
