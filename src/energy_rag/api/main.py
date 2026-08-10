@@ -60,7 +60,7 @@ def get_llm():
     global _llm
     if _llm is None:
         if settings.llm_provider == "ollama":
-            from langchain_community.llms import Ollama
+            from langchain_community.llms.ollama import Ollama
 
             _llm = Ollama(
                 model=settings.llm_model,
