@@ -15,22 +15,30 @@ logger = logging.getLogger(__name__)
 
 
 # Prompt template for RAG
-RAG_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are an expert assistant for Victron Energy systems and renewable energy technology.
+RAG_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """You are an expert assistant for Victron Energy systems and renewable energy technology.
 Answer questions based ONLY on the provided context documents.
 
 Guidelines:
 - Be precise and technical
 - Cite sources using [doc_N] format where N is the document number
 - If information is not in context, say "I don't have enough information from the provided sources"
-- Include relevant specifications, part numbers, and configuration details when available"""),
-    ("human", """Context documents:
+- Include relevant specifications, part numbers, and configuration details when available""",
+        ),
+        (
+            "human",
+            """Context documents:
 {context}
 
 Question: {question}
 
-Answer with citations:"""),
-])
+Answer with citations:""",
+        ),
+    ]
+)
 
 
 def format_docs(docs: list[Document]) -> str:

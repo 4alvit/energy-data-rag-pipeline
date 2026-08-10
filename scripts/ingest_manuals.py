@@ -7,7 +7,7 @@ from pathlib import Path
 
 from energy_rag.chunking import create_chunker
 from energy_rag.ingestion import create_ingestion_pipeline
-from energy_rag.storage.pgvector import init_database, get_database
+from energy_rag.storage.pgvector import get_database, init_database
 from energy_rag.storage.repository import DocumentRepository
 
 logging.basicConfig(level=logging.INFO)
@@ -62,7 +62,7 @@ async def ingest_manuals(
             )
 
         except Exception as e:
-            logger.exception("Ingestion failed: %s", e)
+            logger.exception("Ingestion failed")
             await repo.complete_ingestion_run(
                 run_id=run.id,
                 status="failed",
@@ -116,4 +116,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
