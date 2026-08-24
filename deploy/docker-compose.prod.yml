@@ -20,7 +20,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rag -d energy_rag"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 10
 
   api:
@@ -55,7 +55,7 @@ services:
           "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
         ]
       interval: 15s
-      timeout: 5s
+      timeout: 10s
       retries: 5
       # First boot downloads the embedding models (~100 MB); slow NAS disks
       # can exceed several minutes before /health answers.
@@ -84,7 +84,7 @@ services:
           "import socket; s=socket.create_connection(('localhost',8800),timeout=3); s.close()",
         ]
       interval: 15s
-      timeout: 5s
+      timeout: 10s
       retries: 5
       start_period: 30s
 
@@ -119,7 +119,7 @@ services:
           "import socket; s=socket.create_connection(('localhost',${FCC_PORT:-8082}),timeout=3); s.close()",
         ]
       interval: 15s
-      timeout: 5s
+      timeout: 10s
       retries: 5
       start_period: 30s
 
