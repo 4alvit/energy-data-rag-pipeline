@@ -107,13 +107,33 @@ class TechnicalChunker:
         return Document(page_content=chunk.page_content, metadata=merged_metadata)
 
 
+class _SplitterAdapter:
+    """Adapt a LangChain text splitter to the chunk_documents contract.
+
+    The ingestion pipeline calls ``chunker.chunk_documents(docs)`` for every
+    strategy; raw LangChain splitters only expose ``split_documents``.
+    """
+
+    def __init__(self, splitter: Any) -> None:
+        self._splitter = splitter
+
+    def chunk_documents(self, documents: list[Document]) -> list[Document]:
+        if hasattr(self._splitter, "split_documents"):
+            return list(self._splitter.split_documents(documents))
+        # Text-only splitters (e.g. MarkdownHeaderTextSplitter): keep metadata.
+        chunks: list[Document] = []
+        for doc in documents:
+            chunks.extend(self._splitter.split_text(doc.page_content))
+        return chunks
+
+
 class ChunkingStrategy:
     """Factory for different chunking strategies."""
 
     STRATEGIES: ClassVar[dict[str, object]] = {
         "technical": TechnicalChunker,
-        "markdown": "MarkdownHeaderTextSplitter",
-        "recursive": "RecursiveCharacterTextSplitter",
+        "markdown": MarkdownHeaderTextSplitter,
+        "recursive": RecursiveCharacterTextSplitter,
         "fixed": "CharacterTextSplitter",
     }
 
@@ -124,24 +144,30 @@ class ChunkingStrategy:
             return TechnicalChunker(**kwargs)
 
         if strategy == "markdown":
-            return MarkdownHeaderTextSplitter(
-                headers_to_split_on=MARKDOWN_HEADERS,
-                strip_headers=kwargs.get("strip_headers", False),
+            return _SplitterAdapter(
+                MarkdownHeaderTextSplitter(
+                    headers_to_split_on=MARKDOWN_HEADERS,
+                    strip_headers=kwargs.get("strip_headers", False),
+                )
             )
 
         if strategy == "recursive":
-            return RecursiveCharacterTextSplitter(
-                chunk_size=kwargs.get("chunk_size", settings.chunk_size),
-                chunk_overlap=kwargs.get("chunk_overlap", settings.chunk_overlap),
-                length_function=len,
+            return _SplitterAdapter(
+                RecursiveCharacterTextSplitter(
+                    chunk_size=kwargs.get("chunk_size", settings.chunk_size),
+                    chunk_overlap=kwargs.get("chunk_overlap", settings.chunk_overlap),
+                    length_function=len,
+                )
             )
 
         if strategy == "fixed":
             from langchain_text_splitters import CharacterTextSplitter
 
-            return CharacterTextSplitter(
-                chunk_size=kwargs.get("chunk_size", settings.chunk_size),
-                chunk_overlap=kwargs.get("chunk_overlap", settings.chunk_overlap),
+            return _SplitterAdapter(
+                CharacterTextSplitter(
+                    chunk_size=kwargs.get("chunk_size", settings.chunk_size),
+                    chunk_overlap=kwargs.get("chunk_overlap", settings.chunk_overlap),
+                )
             )
 
         raise ValueError(f"Unknown chunking strategy: {strategy}")
