@@ -53,3 +53,4 @@ chroma/
 # Local deployment (never commit)
 deploy/deploy.sh
 deploy/.env
+TODO.md
