@@ -71,3 +71,16 @@ def test_format_citations_appends_references():
 
 def test_format_citations_without_sources_is_identity():
     assert format_citations("Answer.", []) == "Answer."
+
+
+def test_answer_text_joins_content_blocks():
+    from energy_rag.retrieval.chain import _answer_text
+
+    blocks = [
+        {"type": "thinking", "thinking": "reasoning here"},
+        {"type": "text", "text": "Answer part 1. "},
+        {"type": "text", "text": "[doc_1]"},
+        "plain-string-block-ignored",
+    ]
+    assert _answer_text(blocks) == "Answer part 1. [doc_1]"
+    assert _answer_text("plain string") == "plain string"

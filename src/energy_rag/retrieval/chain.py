@@ -15,6 +15,21 @@ logger = logging.getLogger(__name__)
 
 
 # Prompt template for RAG
+def _answer_text(answer: Any) -> str:
+    """Return the model answer as plain text.
+
+    Reasoning models reached through Free Claude Code (e.g. nvidia/nemotron)
+    return a list of content blocks - keep only the text ones.
+    """
+    if isinstance(answer, list):
+        return "".join(
+            block.get("text", "")
+            for block in answer
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+    return answer
+
+
 RAG_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
@@ -151,6 +166,7 @@ async def query_rag(
     answer = await llm.ainvoke(prompt_value)
     if hasattr(answer, "content"):
         answer = answer.content
+    answer = _answer_text(answer)
 
     # Extract citations
     sources = []
