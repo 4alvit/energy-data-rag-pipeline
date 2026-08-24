@@ -11,7 +11,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rag -d energy_rag"]
       interval: 5s
@@ -22,6 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: ghcr.io/4alvit/energy-data-rag-pipeline:${TAG:-latest}
     container_name: energy-rag-api
     restart: unless-stopped
     depends_on:
@@ -36,13 +37,54 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./data:/data
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+        ]
+      interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 60s
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/4alvit/energy-data-rag-pipeline:${TAG:-latest}
+    container_name: energy-rag-mcp
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    command:
+      ["energy-rag-mcp", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8800"]
+    environment:
+      RAG_API_URL: http://api:8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${MCP_PORT:-8800}:8800"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s=socket.create_connection(('localhost',8800),timeout=3); s.close()",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   pgdata:

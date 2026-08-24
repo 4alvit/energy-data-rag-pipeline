@@ -122,31 +122,35 @@ async def query_rag(
 
     k = top_k or settings.default_top_k
 
-    # Retrieve documents
-    retriever = vector_store.as_retriever(
-        search_type="similarity_score_threshold",
-        search_kwargs={
-            "k": k,
-            "score_threshold": settings.similarity_threshold,
-        },
+    # Retrieve documents (async-native pgvector search with cosine distance)
+    scored_docs = await vector_store.asimilarity_search_with_score(
+        question,
+        k=k,
+        filter=filters or {},
     )
 
-    # Apply metadata filters if provided
-    if filters:
-        retriever.search_kwargs["filter"] = filters
-
-    docs = await retriever.ainvoke(question)
+    # Convert cosine distance to similarity and apply threshold
+    docs = []
+    for doc, distance in scored_docs:
+        similarity = 1 - float(distance)
+        if similarity >= settings.similarity_threshold:
+            doc.metadata = {**doc.metadata, "score": round(similarity, 4)}
+            docs.append(doc)
 
     if not docs:
         return {
-            "answer": "I don't have enough information from the provided sources to answer this question.",
+            "answer": (
+                "I don't have enough information from the provided sources to answer this question."
+            ),
             "sources": [],
             "processing_time_ms": int((time.perf_counter() - start_time) * 1000),
         }
 
-    # Create chain and get answer
-    chain = create_retrieval_chain(llm, retriever)
-    answer = await chain.ainvoke(question)
+    # Build prompt from retrieved docs and generate answer
+    prompt_value = RAG_PROMPT.invoke({"context": format_docs(docs), "question": question})
+    answer = await llm.ainvoke(prompt_value)
+    if hasattr(answer, "content"):
+        answer = answer.content
 
     # Extract citations
     sources = []

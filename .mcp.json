@@ -3,6 +3,14 @@
     "graphify": {
       "type": "http",
       "url": "https://api.graphify.com/mcp"
+    },
+    "energy-rag": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", ".", "run", "energy-rag-mcp"],
+      "env": {
+        "RAG_API_URL": "http://localhost:8000"
+      }
     }
   }
 }
