@@ -76,6 +76,9 @@ fi
 
   # Write .env only if absent so operator tweaks survive redeploys.
   remote "test -f '$REMOTE_DIR/.env'" || write_env
+  # TAG always follows the repo version file; every other .env value stays operator-owned.
+  # Without this, a released tag never reaches an existing deployment (compose keeps the old one).
+  remote "sudo sed -i 's/^TAG=.*/TAG=$TAG/' '$REMOTE_DIR/.env'"
 }
 
 write_env() {
