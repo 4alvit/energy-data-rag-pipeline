@@ -66,7 +66,7 @@ preflight() {
 
 sync_files() {
   log "Uploading deployment files..."
-  ssh "$SSH_TARGET" "sudo mkdir -p '$REMOTE_DIR/sql' '$DATA_ROOT/data'"
+  ssh "$SSH_TARGET" "sudo mkdir -p '$REMOTE_DIR/sql' '$DATA_ROOT/pgdata' '$DATA_ROOT/data'"
   rsync -az --delete "$REPO_DIR/deploy/docker-compose.prod.yml" \
     "$SSH_TARGET:$REMOTE_DIR/docker-compose.prod.yml"
   rsync -az --delete "$REPO_DIR/sql/init.sql" \
