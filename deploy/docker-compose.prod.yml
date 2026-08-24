@@ -41,6 +41,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
       - ${DATA_ROOT:-/volume1/docker/energy-rag}/data:/data
+      - hf_cache:/app/.cache
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -56,7 +57,9 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 120s
+      # First boot downloads the embedding models (~100 MB); slow NAS disks
+      # can exceed several minutes before /health answers.
+      start_period: 600s
 
   mcp:
     image: ghcr.io/4alvit/energy-data-rag-pipeline:${TAG:-latest}
@@ -121,4 +124,5 @@ services:
       start_period: 30s
 
 volumes:
+  hf_cache:
   fcc_config:
