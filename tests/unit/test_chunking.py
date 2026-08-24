@@ -45,10 +45,10 @@ def test_recursive_chunker():
         metadata={"source": "test.txt"},
     )
 
-    # RecursiveCharacterTextSplitter uses create_documents
-    chunks = chunker.create_documents([doc.page_content], metadatas=[doc.metadata])
+    chunks = chunker.chunk_documents([doc])
 
     assert len(chunks) >= 1
+    assert all(c.metadata.get("source") == "test.txt" for c in chunks)
 
 
 def test_markdown_chunker():
@@ -60,8 +60,7 @@ def test_markdown_chunker():
         metadata={},
     )
 
-    # MarkdownHeaderTextSplitter uses split_text
-    chunks = chunker.split_text(doc.page_content)
+    chunks = chunker.chunk_documents([doc])
 
     # Splits into sections (not including root title as separate)
     assert len(chunks) == 2  # Section 1 and Section 2
