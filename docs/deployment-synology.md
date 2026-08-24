@@ -122,12 +122,19 @@ Paste your `NVIDIA_NIM_API_KEY` from
 [build.nvidia.com](https://build.nvidia.com/settings/api-keys), pick a
 tool-capable model in the `MODEL` dropdown, click **Validate**, **Apply**.
 
-**Option B - headless via `.env` (no UI):**
+**Option B - headless via `deploy/fcc.env` (no UI):**
 
-Set `NVIDIA_NIM_API_KEY=<key>` and optionally `FCC_MODEL=<slug>` in the
-remote `/volume1/docker/energy-rag/.env` (or export both before the first
-`deploy.sh` run) and redeploy. Container environment takes precedence over
-the Admin UI's stored config until you change values in the UI.
+Create a local `deploy/fcc.env` (gitignored) with the provider credentials:
+
+```dotenv
+NVIDIA_NIM_API_KEY=nvapi-...
+MODEL=nvidia_nim/nvidia/nemotron-3-super-120b-a12b
+```
+
+`deploy.sh` uploads it as `fcc.env` next to the compose file on the NAS; the
+compose `fcc` service consumes it via `env_file`, so container environment
+takes precedence over whatever the Admin UI has stored. Re-run `deploy.sh`
+after edits. If no local file exists the deploy creates an empty one.
 
 Pointing clients at it:
 

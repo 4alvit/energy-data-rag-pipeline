@@ -53,4 +53,5 @@ chroma/
 # Local deployment (never commit)
 deploy/deploy.sh
 deploy/.env
+deploy/fcc.env
 TODO.md

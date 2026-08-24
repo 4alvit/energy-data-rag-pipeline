@@ -29,9 +29,6 @@ FCC_PORT="${FCC_PORT:-8082}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-changeme}"              # CHANGE ME in deploy.sh
 OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://192.168.1.50:11434}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
-# Optional headless FCC provisioning (empty = configure via Admin UI later)
-NVIDIA_NIM_API_KEY="${NVIDIA_NIM_API_KEY:-}"
-FCC_MODEL="${FCC_MODEL:-nvidia_nim/nvidia/nemotron-3-super-120b-a12b}"
 
 SSH_TARGET="${SYNOLOGY_HOST}"
 [ -n "$SYNOLOGY_USER" ] && SSH_TARGET="${SYNOLOGY_USER}@${SYNOLOGY_HOST}"
@@ -71,6 +68,11 @@ sync_files() {
     "$SSH_TARGET:$REMOTE_DIR/docker-compose.prod.yml"
   rsync -az --delete "$REPO_DIR/sql/init.sql" \
     "$SSH_TARGET:$REMOTE_DIR/sql/init.sql"
+if [ -f "$SCRIPT_DIR/fcc.env" ]; then
+  rsync -q "$SCRIPT_DIR/fcc.env" "$SSH_TARGET:$REMOTE_DIR/fcc.env"
+else
+  ssh "$SSH_TARGET" "touch '$REMOTE_DIR/fcc.env'"   # compose env_file must exist
+fi
 
   # Write .env only if absent so operator tweaks survive redeploys.
   remote "test -f '$REMOTE_DIR/.env'" || write_env
@@ -90,8 +92,6 @@ LOG_LEVEL=$LOG_LEVEL
 EMBEDDING_MODEL=${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
 LLM_PROVIDER=${LLM_PROVIDER:-ollama}
 LLM_MODEL=${LLM_MODEL:-llama3.1:8b}
-NVIDIA_NIM_API_KEY=$NVIDIA_NIM_API_KEY
-FCC_MODEL=$FCC_MODEL
 EOF
 }
 
