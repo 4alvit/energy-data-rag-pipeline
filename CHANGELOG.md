@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-08-24
+
+### Added
+- `scripts/fetch_victron_content.py`: fetches real Victron content for the
+  corpus — official English PDF manuals (discovered by scraping curated
+  product pages, so manual versions stay current) and community threads from
+  community.victronenergy.com saved as `forum_json`. Idempotent.
+- `deploy/deploy.sh --with-manuals`: uploads `data/manuals` + `data/community`
+  to the NAS and queues both ingestions; runbook in
+  [docs/corpus-enrichment.md](docs/corpus-enrichment.md)
+
+### Fixed
+- `ChunkingStrategy.create` wraps raw LangChain splitters (markdown /
+  recursive / fixed) in an adapter exposing `chunk_documents` — the
+  ingestion pipeline crashed with AttributeError and stored 0 chunks for any
+  non-technical strategy (#51)
+- `deploy.sh` now syncs `TAG=` into the remote `.env` on every deploy;
+  previously a released tag never reached an existing deployment (#49)
+- compose passes `LLM_BASE_URL` through to the api container (#50)
+
 ## [0.2.1] - 2026-08-24
 
 ### Fixed
