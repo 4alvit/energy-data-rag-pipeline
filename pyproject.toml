@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "energy-rag-pipeline"
-version = "0.1.1"
+version = "0.2.0"
 description = "RAG pipeline for Victron/energy documentation with pgvector and LangChain"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -57,10 +57,31 @@ test = [
     "httpx>=0.28.0",
     "faker>=25.0.0",
 ]
+openai = [
+    "langchain-openai>=0.2.0",
+]
+anthropic = [
+    "langchain-anthropic>=0.2.0",
+]
+mcp = [
+    "mcp[cli]>=2.0.0",
+]
 
 [project.scripts]
 energy-rag-api = "energy_rag.api.main:main"
-energy-rag-ingest = "scripts.ingest_manuals:main"
+energy-rag-ingest = "energy_rag.cli:main"
+energy-rag-mcp = "energy_rag.mcp_server:main"
+
+[tool.uv]
+# CPU-only torch: this service runs inference on CPU (NAS/small servers);
+# avoids pulling multi-GB CUDA wheels into the Docker image.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

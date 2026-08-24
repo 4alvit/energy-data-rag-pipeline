@@ -1,0 +1,1972 @@
+[
+  {
+    "title": "API Reference",
+    "body": "Base URL: `http://<host>:8000` (default port 8000).\nInteractive OpenAPI docs: `http://localhost:8000/docs`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "API Reference > `GET /health`",
+    "body": "Liveness + database connectivity.\n\n```json\n{ \"status\": \"healthy\", \"database\": \"connected\", \"version\": \"0.2.0\" }\n```\n\nStatus is `degraded` when the DB check fails. Also available:\n`GET /health/ready`, `GET /health/live`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference",
+      "`get-/health`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "API Reference > `POST /query`",
+    "body": "Request:\n\n```json\n{\n  \"query\": \"How to configure ESS grid-zero on MultiPlus-II?\",\n  \"top_k\": 5,\n  \"filters\": { \"product\": \"MultiPlus-II\" },\n  \"include_citations\": true\n}\n```\n\n- `query`: required, 1..2000 chars.\n- `top_k`: 1..20, default from `DEFAULT_TOP_K` (5).\n- `filters`: arbitrary JSONB metadata equality filter (e.g. `product`,\n  `doc_type`, `section_title`).\n- `include_citations`: parse `[doc_N]` markers into a sources list.\n\nResponse:\n\n```json\n{\n  \"answer\": \"To configure ESS grid-zero ... [doc_1]\",\n  \"sources\": [\n    {\n      \"index\": 1,\n      \"content\": \"ESS Grid-zero configuration ...\",\n      \"metadata\": { \"product\": \"MultiPlus-II\", \"page_number\": 42 }\n    }\n  ],\n  \"processing_time_ms\": 245\n}\n```\n\nWhen nothing clears the similarity threshold (`SIMILARITY_THRESHOLD`, 0.3),\nthe answer is a fixed \"not enough information\" string with empty `sources`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference",
+      "`post-/query`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "API Reference > `POST /query/search`",
+    "body": "Pure semantic retrieval **without LLM generation** — works even when no LLM\nprovider is configured (e.g. NAS without Ollama):\n\n```json\n{ \"query\": \"ESS grid zero configuration\", \"top_k\": 5 }\n```\n\nResponse:\n\n```json\n{\n  \"results\": [{ \"index\": 1, \"content\": \"...\", \"metadata\": { \"...\": \"...\" } }],\n  \"processing_time_ms\": 213\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference",
+      "`post-/query/search`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "API Reference > `GET /query/stats`",
+    "body": "Retrieval configuration snapshot:\n\n```json\n{\n  \"embedding_model\": \"sentence-transformers/all-MiniLM-L6-v2\",\n  \"embedding_dimension\": 384,\n  \"llm_provider\": \"ollama\",\n  \"llm_model\": \"llama3.1:8b\",\n  \"default_top_k\": 5,\n  \"similarity_threshold\": 0.3\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference",
+      "`get-/query/stats`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "API Reference > `POST /ingest`",
+    "body": "Queues background ingestion and returns immediately.\n\n```json\n{\n  \"source_type\": \"pdf\",\n  \"paths\": [\"/data/manuals\", \"/data/manuals/multiplus-ii.pdf\"],\n  \"chunk_strategy\": \"technical\"\n}\n```\n\n- `source_type`: one of `pdf`, `forum_html`, `forum_json`, `url`.\n- `paths`: paths **as seen by the api container**. The compose stack mounts\n  `./data` → `/data`.\n- Response: `{ \"status\": \"started\", ..., \"run_id\": \"<uuid>\" }`.\n\nProgress lands in the `ingestion_runs` table. Inspect it with:\n\n```bash\ndocker compose exec postgres psql -U rag -d energy_rag \\\n  -c \"SELECT status, documents_processed, chunks_created, error_message FROM ingestion_runs ORDER BY started_at DESC LIMIT 5;\"\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference",
+      "`post-/ingest`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "API Reference > Error handling",
+    "body": "Unhandled exceptions return `{\"detail\": \"...\", \"error_code\": \"INTERNAL_ERROR\"}`\nwith HTTP 500; query before startup completes returns 503.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference",
+      "error-handling"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "API Reference > CLI equivalents",
+    "body": "```bash\nenergy-rag-ingest --source-type pdf --source-dir /data/manuals\nenergy-rag-ingest --source-type forum_json --paths corpus.json --chunk-strategy recursive\n```\n\nThe CLI writes to the same database via `DATABASE_URL`; run it inside the api\ncontainer (`docker compose exec api energy-rag-ingest ...`) or locally against\na forwarded port.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/api-reference.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "api-reference",
+      "api-reference",
+      "cli-equivalents"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Architecture > High-level data flow",
+    "body": "```mermaid\ngraph TD\n    subgraph Ingestion\n        PDF[PDF Manuals] --> PDFLoader[PyMuPDF Loader]\n        HTML[Forum HTML] --> HTMLLoader[BeautifulSoup Loader]\n        JSON[\"Forum JSON (array of posts)\"] --> JSONLoader[JSON Loader]\n        PDFLoader --> Pipeline[Ingestion Pipeline]\n        HTMLLoader --> Pipeline\n        JSONLoader --> Pipeline\n    end\n\n    subgraph Chunking\n        Pipeline --> HeaderSplitter[MarkdownHeaderTextSplitter]\n        HeaderSplitter -->|headers found| Chunks[Chunks + metadata]\n        HeaderSplitter -->|no headers| RecursiveSplitter[RecursiveCharacterTextSplitter]\n        RecursiveSplitter --> Chunks\n    end\n\n    subgraph Storage\n        Chunks --> Embeddings[Sentence Transformers<br/>all-MiniLM-L6-v2, 384-dim]\n        Embeddings --> PGVector[(pgvector / PostgreSQL 16)]\n        PGVector --> IVF[IVFFlat cosine index]\n        PGVector --> GIN[GIN metadata index]\n    end\n\n    subgraph Query\n        Q[User Question] --> Retriever[LangChain Retriever<br/>similarity_score_threshold]\n        GIN --> Retriever\n        IVF --> Retriever\n        Retriever --> LLM[\"LLM: Ollama / OpenAI / Anthropic\"]\n        LLM --> Answer[Answer + [doc_N] citations]\n    end\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/architecture.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "architecture",
+      "architecture",
+      "high-level-data-flow"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Architecture > Components > `src/energy_rag/`",
+    "body": "| Module | Responsibility |\n|---|---|\n| `config.py` | Pydantic settings from env/`.env` (`energy_rag.config.settings`) |\n| `ingestion/pdf_loader.py` | PDF → markdown/pages via PyMuPDF, Victron manual metadata |\n| `ingestion/forum_loader.py` | Forum HTML (CSS selectors per engine), forum JSON (Discourse-like), URL fetcher |\n| `ingestion/pipeline.py` | Orchestrates loader → chunker for directories/files |\n| `chunking/technical.py` | Markdown-header-aware splitting with recursive fallback |\n| `storage/models.py` | SQLAlchemy models: `documents`, `ingestion_runs` |\n| `storage/pgvector.py` | Async engine/session management (`PgVectorDatabase`) |\n| `storage/repository.py` | CRUD + cosine similarity search with metadata filters |\n| `retrieval/chain.py` | LCEL RAG chain, prompt template, citation extraction wiring |\n| `retrieval/citations.py` | `[doc_N]` marker parsing → structured sources |\n| `retrieval/rerank.py` | Optional cross-encoder reranking |\n| `api/main.py` | FastAPI app factory, lifespan init, singleton embeddings/LLM/vector store |\n| `api/routes/` | `/health`, `/query`, `/ingest` routers |\n| `cli.py` | Sync console entry points (`energy-rag-ingest`) |\n| `mcp_server.py` | MCP server (stdio + streamable HTTP) wrapping the REST API |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/architecture.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "architecture",
+      "architecture",
+      "components",
+      "`src/energy_rag/`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Architecture > Storage schema",
+    "body": "`documents` — one row per chunk:\n\n- `id UUID PK`\n- `content TEXT` — chunk text\n- `embedding VECTOR(384)` — nullable until embedded\n- `metadata JSONB` — product, section_title, page_number, url, source_type, ...\n- `created_at` / `updated_at TIMESTAMPTZ` (trigger-maintained)\n\nIndexes: `ivfflat (embedding vector_cosine_ops) WITH lists=100`, `GIN(metadata)`, btree on `created_at`.\n\n`ingestion_runs` — audit trail: source_type, source_path, status\n(pending/completed/failed), documents_processed, chunks_created,\nerror_message, timestamps.\n\nSchema is provisioned by [`sql/init.sql`](../sql/init.sql) mounted into the\npostgres container's `docker-entrypoint-initdb.d`.\n\n> Note on dimensions: `EMBEDDING_MODEL` and `embedding_dimension` must match\n> the `VECTOR(384)` column. Changing models requires re-ingesting.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/architecture.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "architecture",
+      "architecture",
+      "storage-schema"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Architecture > Design decisions",
+    "body": "1. **pgvector over a dedicated vector DB** — one less system to operate on a\n   NAS; PostgreSQL already runs everywhere; metadata filtering in SQL is\n   expressive enough.\n2. **REST API as single source of truth** — CLI, MCP server and dashboards all\n   speak HTTP to the same API; no duplicated retrieval logic.\n3. **MCP server as thin adapter** — stdlib-only HTTP client inside; keeps the\n   `mcp` dependency optional and the server stateless.\n4. **Citations by construction** — the prompt forces `[doc_N]` markers which\n   are parsed back into structured sources; ungrounded answers are detectable.\n5. **Async SQLAlchemy + asyncpg** — FastAPI-native, pool_pre_ping for NAS\n   databases that restart.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/architecture.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "architecture",
+      "architecture",
+      "design-decisions"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration",
+    "body": "All settings are environment variables (prefix-less), also loadable from a\n`.env` file in the working directory. Defined in `src/energy_rag/config.py`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      "configuration"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > Database",
+    "body": "| Variable | Default | Description |\n|---|---|---|\n| `DATABASE_URL` | `postgresql+asyncpg://rag:changeme@localhost:5432/energy_rag` | SQLAlchemy async URL. Inside compose use host `postgres`. |\n| `POSTGRES_PASSWORD` | `changeme` | Compose-level password for the postgres container |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      "configuration",
+      "database"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > Embeddings & LLM",
+    "body": "| Variable | Default | Description |\n|---|---|---|\n| `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | HuggingFace model. Must produce 384-dim vectors unless you change the SQL schema. |\n| `EMBEDDING_DIMENSION` | `384` | Declared dimension (informational + validation) |\n| `LLM_PROVIDER` | `ollama` | `ollama`, `openai`, or `anthropic` |\n| `LLM_MODEL` | `llama3.1:8b` | Model name for the chosen provider |\n| `LLM_BASE_URL` | *(empty)* | Optional base-URL override for `openai`/`anthropic` clients (local proxies such as Free Claude Code) |\n| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint; from inside compose use `http://host.docker.internal:11434` |\n| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | *(empty)* | Required when the matching provider is selected |\n\nProvider packages (`langchain-openai`, `langchain-anthropic`) are optional\nextras: `[...--extra openai --extra anthropic]`; the Docker image ships both.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      "configuration",
+      "embeddings-&-llm"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > Embeddings & LLM > Free LLM via Free Claude Code (FCC)",
+    "body": "[Free Claude Code](https://github.com/Alishahryar1/free-claude-code) exposes a\nlocal Anthropic-compatible proxy (default `http://localhost:8082`) that routes\nto free-tier providers. Pointing this service at it makes `/query` generate\ngrounded answers with zero API cost — no Ollama install needed:\n\n```dotenv",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      "configuration",
+      "embeddings-&-llm",
+      "free-llm-via-free-claude-code-(fcc)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > .env on the host running FCC",
+    "body": "LLM_PROVIDER=anthropic\nLLM_BASE_URL=http://localhost:8082\nLLM_MODEL=nvidia_nim/nvidia/nemotron-3-super-120b-a12b\nANTHROPIC_API_KEY=freecc        # your FCC proxy auth token from the Admin UI\n```\n\nNotes:\n\n- The production compose stack ships an `fcc` service itself — see\n  [deployment-synology.md → Free Claude Code on the NAS](deployment-synology.md).\n- Match `LLM_MODEL` to a model configured in the FCC Admin UI and use its full\n  `<provider>/<model-id>` slug; pick a tool-friendly instruct model.\n- When running the stack in docker compose, replace the URL with\n  `http://host.docker.internal:8082` (`extra_hosts: host-gateway` is already\n  set in compose).\n- The token value is only checked by FCC's local proxy if you enabled\n  **Proxy Authentication** in its Admin UI; any non-empty key satisfies the\n  LangChain client otherwise.\n- Restart the api container after changing these variables (`Settings` is read\n  once at startup).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      ".env-on-the-host-running-fcc"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > .env on the host running FCC > Retrieval",
+    "body": "| Variable | Default | Description |\n|---|---|---|\n| `DEFAULT_TOP_K` | `5` | Chunks retrieved per query |\n| `SIMILARITY_THRESHOLD` | `0.3` | Minimum cosine similarity (MiniLM models score 0.3-0.6 on relevant text) |\n| `ENABLE_RERANK` | `false` | Cross-encoder reranking of candidates |\n| `RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Reranker model |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      ".env-on-the-host-running-fcc",
+      "retrieval"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > .env on the host running FCC > Ingestion",
+    "body": "| Variable | Default | Description |\n|---|---|---|\n| `CHUNK_SIZE` | `1000` | Max characters per chunk |\n| `CHUNK_OVERLAP` | `200` | Overlap between chunks |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      ".env-on-the-host-running-fcc",
+      "ingestion"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > .env on the host running FCC > API service",
+    "body": "| Variable | Default | Description |\n|---|---|---|\n| `API_HOST` | `0.0.0.0` | uvicorn bind host |\n| `API_PORT` | `8000` | uvicorn bind port |\n| `API_WORKERS` | `1` | Keep at 1 — models are cached per process |\n| `LOG_LEVEL` | `INFO` | Logging level |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      ".env-on-the-host-running-fcc",
+      "api-service"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > .env on the host running FCC > MCP server",
+    "body": "| Variable | Default | Description |\n|---|---|---|\n| `RAG_API_URL` | `http://localhost:8000` | REST API the MCP server proxies to |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      ".env-on-the-host-running-fcc",
+      "mcp-server"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > .env on the host running FCC > Docker-compose ports",
+    "body": "| Variable | Default | Description |\n|---|---|---|\n| `API_PORT` | `8000` | Host port for the API container |\n| `MCP_PORT` | `8800` | Host port for streamable-HTTP MCP |\n| `TAG` | `latest` | Image tag pulled by prod compose |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      ".env-on-the-host-running-fcc",
+      "docker-compose-ports"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Configuration > .env on the host running FCC > Precedence notes",
+    "body": "1. Environment variables beat `.env` values.\n2. `.env` entries must be literal — docker compose does **not** interpolate\n   variables between entries of the same file (this is why `.env.example`\n   spells out the full `DATABASE_URL`).\n3. `Settings` is cached via `lru_cache` at import time; restart the process to\n   apply changes.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/configuration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "configuration",
+      ".env-on-the-host-running-fcc",
+      "precedence-notes"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > Local development stack",
+    "body": "```bash\ncp .env.example .env\ndocker compose up -d          # postgres + api + mcp (builds locally)\ncurl localhost:8000/health\n```\n\n`./data` is mounted into the api container at `/data` — drop PDFs and exports\nthere for ingestion. The `mcp` service exposes streamable-HTTP MCP on port\n8800 (`http://localhost:8800/mcp`).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "deployment-(docker-&-synology)",
+      "local-development-stack"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > Production images",
+    "body": "Releases publish multi-arch images (linux/amd64 + linux/arm64) to GHCR:\n\n```\nghcr.io/4alvit/energy-data-rag-pipeline:<version>   # e.g. 0.2.0\nghcr.io/4alvit/energy-data-rag-pipeline:<major.minor>\nghcr.io/4alvit/energy-data-rag-pipeline:latest\nghcr.io/4alvit/free-claude-code:<version>           # bundled FCC proxy\n```\n\nPublished by `.github/workflows/docker-publish.yml` on every `v*` tag and on\npushes to `main`. See [release-and-images.md](release-and-images.md).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "deployment-(docker-&-synology)",
+      "production-images"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > Synology deployment via deploy.sh",
+    "body": "The NAS runs the same stack from prebuilt images — no compiler, no build step.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "deployment-(docker-&-synology)",
+      "synology-deployment-via-deploy.sh"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > Synology deployment via deploy.sh > One-time setup",
+    "body": "```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "deployment-(docker-&-synology)",
+      "synology-deployment-via-deploy.sh",
+      "one-time-setup"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > On your workstation:",
+    "body": "cd energy-data-rag-pipeline",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "on-your-workstation:"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > 1. Create the local-only deploy script",
+    "body": "cp deploy/deploy.sh.example deploy/deploy.sh   # gitignored\nchmod +x deploy/deploy.sh",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "1.-create-the-local-only-deploy-script"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > 3. Verify prerequisites (passwordless ssh AND passwordless sudo):",
+    "body": "ssh synology true && ssh synology 'sudo -n true'\n```\n\nIf you don't have a passwordless-sudo user yet, on the NAS:\n\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "3.-verify-prerequisites-(passwordless-ssh-and-passwordless-sudo):"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > /usr/local/etc/sudoers.d/deploy  (edit as root)",
+    "body": "<victron> ALL=(ALL) NOPASSWD: ALL\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "/usr/local/etc/sudoers.d/deploy--(edit-as-root)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > /usr/local/etc/sudoers.d/deploy  (edit as root) > Daily operation",
+    "body": "```bash\ndeploy/deploy.sh                 # sync files, pull images, restart, health check, smoke query\ndeploy/deploy.sh --with-docs     # also upload docs-corpus/ and trigger ingestion\ndeploy/deploy.sh status          # container states\ndeploy/deploy.sh logs api        # tail api logs (also: mcp, postgres)\ndeploy/deploy.sh down            # stop everything\n```\n\nWhat `deploy.sh --with-docs` does:\n\n1. Generates `docs-corpus/` locally via `scripts/export_docs_corpus.py`\n   (if missing).\n2. `rsync`s it to `$DATA_ROOT/data/docs-corpus/` on the NAS.\n3. POSTs `/ingest` with `source_type=forum_json` pointing at\n   `/data/docs-corpus/corpus.json`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "/usr/local/etc/sudoers.d/deploy--(edit-as-root)",
+      "daily-operation"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > /usr/local/etc/sudoers.d/deploy  (edit as root) > What lands on the NAS",
+    "body": "```\n/volume1/docker/energy-rag/\n├── docker-compose.prod.yml      # synced by deploy.sh\n├── sql/init.sql                 # schema bootstrap (first start only)\n├── .env                         # created once; manual edits preserved\n├── data/                        # mounted into api:/data\n│   └── docs-corpus/corpus.json  # uploaded documentation knowledge\n└── pgdata/                      # postgres volume\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "/usr/local/etc/sudoers.d/deploy--(edit-as-root)",
+      "what-lands-on-the-nas"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > /usr/local/etc/sudoers.d/deploy  (edit as root) > Manual deployment (without deploy.sh)",
+    "body": "```bash\nssh synology 'sudo mkdir -p /volume1/docker/energy-rag/sql'\nrsync -av deploy/docker-compose.prod.yml sql/init.sql synology:/tmp/erag/\nssh synology 'sudo mv /tmp/erag/* /volume1/docker/energy-rag/'\nssh synology \"cd /volume1/docker/energy-rag && \\\n  TAG=0.2.0 POSTGRES_PASSWORD=secret sudo -E \\\n  docker compose -f docker-compose.prod.yml up -d\"\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "/usr/local/etc/sudoers.d/deploy--(edit-as-root)",
+      "manual-deployment-(without-deploy.sh)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > /usr/local/etc/sudoers.d/deploy  (edit as root) > Free Claude Code on the NAS",
+    "body": "The prod stack includes an `fcc` service: a headless\n[Free Claude Code](https://github.com/Alishahryar1/free-claude-code) server\n(Anthropic-compatible proxy to free-tier providers, image pinned by commit\nSHA in `deploy/fcc/Dockerfile`). It runs with **host networking** because its\nAdmin UI hard-rejects any request whose client IP or Origin header is not\nloopback; host networking lets an SSH tunnel present genuine loopback while\nLAN clients can still reach the proxy endpoints.\n\nTwo ways to configure a provider:\n\n**Option A - Admin UI via SSH tunnel (full features):**\n\n```bash\nssh -N -L 8082:127.0.0.1:8082 synology    # keep running",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "/usr/local/etc/sudoers.d/deploy--(edit-as-root)",
+      "free-claude-code-on-the-nas"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > then open http://localhost:8082/admin in your browser",
+    "body": "```\n\nPaste your `NVIDIA_NIM_API_KEY` from\n[build.nvidia.com](https://build.nvidia.com/settings/api-keys), pick a\ntool-capable model in the `MODEL` dropdown, click **Validate**, **Apply**.\n\n**Option B - headless via `.env` (no UI):**\n\nSet `NVIDIA_NIM_API_KEY=<key>` and optionally `FCC_MODEL=<slug>` in the\nremote `/volume1/docker/energy-rag/.env` (or export both before the first\n`deploy.sh` run) and redeploy. Container environment takes precedence over\nthe Admin UI's stored config until you change values in the UI.\n\nPointing clients at it:\n\n- Claude Code on any machine:\n  `ANTHROPIC_BASE_URL=http://<nas-ip>:8082 ANTHROPIC_AUTH_TOKEN=freecc claude`\n  (token differs if you enabled Proxy Authentication in the Admin UI).\n- This very stack's answer generation: set `LLM_PROVIDER=anthropic`,\n  `LLM_BASE_URL=http://host.docker.internal:8082`,\n  `LLM_MODEL=<fcc-model-slug>`, `ANTHROPIC_API_KEY=freecc` in the remote\n  `.env`, then redeploy — see\n  [configuration.md → Free LLM via Free Claude Code](configuration.md).\n\nNotes:\n\n- Provider keys and the model mapping persist in the `fcc_config` docker\n  volume (`~/.fcc/.env` inside the container) and survive redeploys.\n- The proxy trusts anyone who can reach port 8082 — keep it LAN-only; enable\n  **Proxy Authentication** in the Admin UI for a bearer token.\n- Upstream moves fast without release tags; bump the pinned `FCC_REF` commit\n  SHA in `deploy/fcc/Dockerfile` deliberately.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "then-open-http://localhost:8082/admin-in-your-browser"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > then open http://localhost:8082/admin in your browser > Synology specifics",
+    "body": "- Container Manager (GUI) can import\n  `deploy/docker-compose.prod.yml`, but SSH+compose gives reproducibility.\n- arm64 models (DS220+, DS920+ re-badged units, newer \"+\" series) run the\n  same image thanks to multi-arch manifests.\n- First API start downloads embedding models (~100 MB) to the container\n  layer; subsequent restarts reuse them unless the container is recreated.\n- If Ollama runs on another LAN host, set `OLLAMA_BASE_URL=http://<ip>:11434`\n  (no `host.docker.internal` needed from the NAS).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "then-open-http://localhost:8082/admin-in-your-browser",
+      "synology-specifics"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Deployment (Docker & Synology) > then open http://localhost:8082/admin in your browser > Upgrades & rollback",
+    "body": "```bash\nTAG=v0.2.1 deploy/deploy.sh       # move to a version\nTAG=v0.2.0 deploy/deploy.sh       # roll back — pgdata volume persists\n```\n\nSchema changes are additive (`sql/init.sql` runs only on first DB creation);\ncheck CHANGELOG.md for migration notes between versions.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/deployment-synology.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "deployment-synology",
+      "then-open-http://localhost:8082/admin-in-your-browser",
+      "upgrades-&-rollback"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline — Documentation Index",
+    "body": "RAG (Retrieval-Augmented Generation) pipeline over Victron Energy documentation\nand community knowledge. FastAPI + LangChain + pgvector (PostgreSQL 16),\npackaged as multi-arch Docker images (linux/amd64 + linux/arm64).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/index.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "index",
+      "energy-data-rag-pipeline-—-documentation-index"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline — Documentation Index > Documentation map",
+    "body": "| Document | Purpose |\n|---|---|\n| [architecture.md](architecture.md) | Components, data flow, design decisions |\n| [api-reference.md](api-reference.md) | REST endpoints, request/response schemas |\n| [configuration.md](configuration.md) | Every environment variable and setting |\n| [ingestion-and-chunking.md](ingestion-and-chunking.md) | Loaders, chunking strategies, metadata schema |\n| [deployment-synology.md](deployment-synology.md) | Synology/NAS deployment via `deploy/deploy.sh` |\n| [mcp-integration.md](mcp-integration.md) | Connecting AI coding agents (Claude Code, opencode, Cursor, ...) via MCP |\n| [release-and-images.md](release-and-images.md) | Versioning policy, multi-arch images, release runbook |\n| [troubleshooting.md](troubleshooting.md) | Common failure modes and fixes |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/index.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "index",
+      "energy-data-rag-pipeline-—-documentation-index",
+      "documentation-map"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline — Documentation Index > The 60-second tour",
+    "body": "```bash\ncp .env.example .env          # configure\ndocker compose up -d          # postgres + api + mcp\ncurl localhost:8000/health    # -> {\"status\": \"healthy\", ...}\n```\n\nFeed it knowledge, then ask questions:\n\n```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/index.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "index",
+      "energy-data-rag-pipeline-—-documentation-index",
+      "the-60-second-tour"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline — Documentation Index > Ingest PDFs mounted at ./data/manuals",
+    "body": "curl -X POST localhost:8000/ingest -H 'Content-Type: application/json' \\\n  -d '{\"source_type\":\"pdf\",\"paths\":[\"/data/manuals\"]}'",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/index.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "index",
+      "ingest-pdfs-mounted-at-./data/manuals"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline — Documentation Index > Ask",
+    "body": "curl -X POST localhost:8000/query -H 'Content-Type: application/json' \\\n  -d '{\"query\":\"How to configure ESS grid-zero on MultiPlus-II?\"}'\n```\n\nOr plug it straight into your AI coding agent via MCP — see\n[mcp-integration.md](mcp-integration.md).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/index.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "index",
+      "ask"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Sources > PDF manuals — `source_type: pdf`",
+    "body": "`energy_rag/ingestion/pdf_loader.py` (PyMuPDF):\n\n- `load_victron_manual(path)` → page-wise documents with Victron metadata.\n- `load_pdf_pages(path)` → one Document per page.\n- `load_pdf_as_markdown(path)` → markdown-converted text.\n- `ingest_pdf_directory(dir, recursive=True)` via the pipeline.\n\nMetadata: `source`, `doc_type=\"manual\"`, `product` / `product_line`\n(parsed from filename/title where possible), `page_number`, `title`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingestion-&-chunking",
+      "sources",
+      "pdf-manuals-—-`source_type:-pdf`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Sources > Forum HTML — `source_type: forum_html`",
+    "body": "BeautifulSoup with per-engine CSS selectors\n(`FORUM_SELECTORS` in `forum_loader.py`). Known engine:\n`community.victronenergy.com`; everything else uses the default selector set.\nAnswers are appended to the content and mirrored into `metadata.answers`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingestion-&-chunking",
+      "sources",
+      "forum-html-—-`source_type:-forum_html`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Sources > Forum JSON — `source_type: forum_json`",
+    "body": "Expects a **single JSON document** containing an array of posts, or an object\nwith one of the keys: `posts`, `topics`, `questions`, `items`, `data`,\n`results`. Each post accepts:\n\n```json\n{\n  \"title\": \"MultiPlus-II ESS no grid feed-in\",\n  \"body\": \"markdown or HTML text ...\",\n  \"url\": \"https://community.victronenergy.com/questions/123/...\",\n  \"author\": \"mvader\",\n  \"created_at\": \"2025-11-02\",\n  \"tags\": [\"ess\", \"multiplus-II\"],\n  \"score\": 12,\n  \"accepted\": true,\n  \"answers\": [{\"body\": \"...\", \"accepted\": false}]\n}\n```\n\nHTML in `body`/`answers` is stripped automatically. This is also the format\nproduced by [`scripts/export_docs_corpus.py`](../scripts/export_docs_corpus.py)\nfor the project's own documentation corpus.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingestion-&-chunking",
+      "sources",
+      "forum-json-—-`source_type:-forum_json`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Chunking strategies (`--chunk-strategy`)",
+    "body": "| Strategy | Behavior |\n|---|---|\n| `technical` *(default)* | Markdown header split (h1–h4) preserving hierarchy; falls back to recursive split when a chunk/document has no headers. Annotates chunks with `h1..h4`, `chunk_method`. |\n| `markdown` | Pure `MarkdownHeaderTextSplitter`. |\n| `recursive` | `RecursiveCharacterTextSplitter` on `\\n\\n` → `\\n` → `. ` → space. |\n| `fixed` | Character-window splitting. |\n\nSizing from `CHUNK_SIZE` (1000) and `CHUNK_OVERLAP` (200).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingestion-&-chunking",
+      "chunking-strategies-(`--chunk-strategy`)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Metadata contract",
+    "body": "Every stored chunk carries JSONB `metadata`. Fields used by retrieval,\nfilters and citations:\n\n| Field | Example | Set by |\n|---|---|---|\n| `source` | `/data/manuals/multiplus-ii.pdf` | all loaders |\n| `source_type` | `pdf` \\| `forum_html` \\| `forum_json` | loaders |\n| `title` | `MultiPlus-II GX 48/3000/35-32 Manual` | loaders |\n| `product` | `MultiPlus-II` | pdf loader heuristics |\n| `section_title` | `ESS settings` | technical/markdown chunkers |\n| `page_number` | `42` | pdf loader |\n| `url` | community thread URL | forum loaders |\n\nFilter example: `{\"filters\": {\"product\": \"MultiPlus-II\"}}`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingestion-&-chunking",
+      "metadata-contract"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Running ingestion",
+    "body": "```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingestion-&-chunking",
+      "running-ingestion"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Via REST (paths are container paths; ./data is mounted at /data)",
+    "body": "curl -X POST localhost:8000/ingest -H 'Content-Type: application/json' \\\n  -d '{\"source_type\":\"pdf\",\"paths\":[\"/data/manuals\"]}'",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "via-rest-(paths-are-container-paths;-./data-is-mounted-at-/data)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Via CLI inside the api container",
+    "body": "docker compose exec api energy-rag-ingest --source-type pdf --source-dir /data/manuals",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "via-cli-inside-the-api-container"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Ingest this repo's own docs corpus",
+    "body": "docker compose exec api energy-rag-ingest --source-type forum_json \\\n  --paths /data/docs-corpus/corpus.json --chunk-strategy recursive\n```\n\nEach run is tracked in `ingestion_runs` with status, counters and error text.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingest-this-repo's-own-docs-corpus"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Ingestion & Chunking > Ingest this repo's own docs corpus > Re-embedding after a model change",
+    "body": "Embeddings live in `documents.embedding VECTOR(384)`. Switching\n`EMBEDDING_MODEL` to another dimension requires:\n\n```sql\nALTER TABLE documents ALTER COLUMN embedding TYPE vector(768);\nDROP INDEX documents_embedding_idx;\nCREATE INDEX documents_embedding_idx ON documents\n  USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);\n```\n\n…and a full re-ingestion so every chunk is re-embedded.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/ingestion-and-chunking.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "ingestion-and-chunking",
+      "ingest-this-repo's-own-docs-corpus",
+      "re-embedding-after-a-model-change"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration",
+    "body": "The pipeline ships an **MCP (Model Context Protocol) server** so any\nMCP-capable AI agent can query your private Victron knowledge base as native\ntools. MCP is an open protocol (originated by Anthropic, now multi-vendor)\nthat lets coding agents call external tools through a JSON-RPC transport.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "mcp-integration"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > Server overview",
+    "body": "Entry point: `src/energy_rag/mcp_server.py`, console script `energy-rag-mcp`.\nIt is a thin, stateless adapter over the REST API (`RAG_API_URL`,\ndefault `http://localhost:8000`) — start the docker stack first.\n\n| Transport | Command | Typical consumer |\n|---|---|---|\n| `stdio` *(default)* | `energy-rag-mcp` | Local agents: Claude Code, opencode, Cursor, ... |\n| `streamable-http` | `energy-rag-mcp --transport streamable-http --host 0.0.0.0 --port 8800` | Remote/shared agents; exposed by compose on port 8800 at `/mcp` |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "mcp-integration",
+      "server-overview"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > Server overview > Tools",
+    "body": "| Tool | Description |\n|---|---|\n| `rag_ask(question, top_k?, product?)` | Grounded answer with `[doc_N]` citations |\n| `rag_search(query, top_k?, product?)` | Raw semantic retrieval of chunks (no LLM) |\n| `rag_ingest(source_type, paths, chunk_strategy?)` | Queue ingestion of files visible to the api container |\n| `rag_health()` | API + database status |\n| `rag_stats()` | Embedding/LLM/retrieval configuration |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "mcp-integration",
+      "server-overview",
+      "tools"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > Prerequisite",
+    "body": "The docker stack must be running somewhere reachable:\n\n```bash\ndocker compose up -d          # workstation",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "mcp-integration",
+      "prerequisite"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > or on the NAS after deploy.sh:",
+    "body": "curl http://synology:8000/health\n```\n\nFor stdio clients the server is spawned locally and needs Python + this repo\n(or the published package). Install once:\n\n```bash\ncd /path/to/energy-data-rag-pipeline\nuv sync --extra mcp           # creates .venv with the mcp extra\n```\n\n---",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "or-on-the-nas-after-deploy.sh:"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > or on the NAS after deploy.sh: > Client configurations",
+    "body": "All examples assume the repo at `/path/to/energy-data-rag-pipeline` — replace\nwith your absolute path, or point `RAG_API_URL` at the Synology instance\n(`http://synology:8000`). For remote-only usage prefer the HTTP variant shown\nat the end.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "or-on-the-nas-after-deploy.sh:",
+      "client-configurations"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > or on the NAS after deploy.sh: > Client configurations > Claude Code",
+    "body": "Project-scope file **`.mcp.json`** in the repo root (shared via git):\n\n```json\n{\n  \"mcpServers\": {\n    \"energy-rag\": {\n      \"type\": \"stdio\",\n      \"command\": \"uv\",\n      \"args\": [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"env\": { \"RAG_API_URL\": \"http://localhost:8000\" }\n    }\n  }\n}\n```\n\nOr register imperatively (user scope, available everywhere):\n\n```bash\nclaude mcp add energy-rag \\\n  --scope user \\\n  --env RAG_API_URL=http://localhost:8000 \\\n  -- uv --directory /path/to/energy-data-rag-pipeline run energy-rag-mcp\n```\n\nHTTP transport against the NAS:\n\n```bash\nclaude mcp add --scope user --transport http energy-rag http://synology:8800/mcp\n```\n\nThis repository ships a ready `.mcp.json` with the energy-rag entry —\napprove it when Claude Code prompts, then check `/mcp`.\n\n> Claude Code expands `${ENV_VAR}` inside `.mcp.json`; avoid committing secrets.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "or-on-the-nas-after-deploy.sh:",
+      "client-configurations",
+      "claude-code"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > or on the NAS after deploy.sh: > Client configurations > Free Claude Code (FCC) — Claude Code without a paid plan",
+    "body": "[Free Claude Code](https://github.com/Alishahryar1/free-claude-code) (FCC) is\nan independent open-source proxy that routes Claude Code's Anthropic API calls\nto free-tier providers (NVIDIA NIM, OpenRouter, LM Studio, Ollama, ...). It is\na drop-in replacement for the model backend only — **MCP configuration works\nexactly as in the section above**, because `.mcp.json` and `claude mcp add`\nare handled by Claude Code itself regardless of which backend serves the\nmodel.\n\nSetup:\n\n```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "or-on-the-nas-after-deploy.sh:",
+      "client-configurations",
+      "free-claude-code-(fcc)-—-claude-code-without-a-paid-plan"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 1. Install FCC (installs fcc-server, fcc-claude, ...; re-run to update)",
+    "body": "curl -fsSL \"https://raw.githubusercontent.com/Alishahryar1/free-claude-code/main/scripts/install.sh\" | sh",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "1.-install-fcc-(installs-fcc-server,-fcc-claude,-...;-re-run-to-update)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > macOS ships a menu-bar app)",
+    "body": "fcc-server",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "macos-ships-a-menu-bar-app)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up",
+    "body": "cd /path/to/energy-data-rag-pipeline\nfcc-claude\n```\n\nApprove the `energy-rag` MCP server when prompted (`/mcp` lists it), then ask\n`rag_ask: ...` as usual. Nothing in this repository needs to change.\n\nNotes and caveats:\n\n- `fcc-claude` points `ANTHROPIC_BASE_URL` at the local FCC proxy\n  (default `http://localhost:8082`) with a proxy auth token configured in the\n  Admin UI; your Anthropic login/API key is never used.\n- Pick **tool-capable** models with enough context window — coding agents send\n  large system prompts plus MCP tool definitions.\n- Free-tier rate limits apply per provider; configure Fallback Models in the\n  Admin UI to survive outages mid-turn.\n- Bonus: the same FCC proxy can serve as the RAG API's own LLM backend so\n  `/query` produces cited answers for free — see\n  [configuration.md → Free LLM via Free Claude Code](configuration.md).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > opencode",
+    "body": "`~/.config/opencode/opencode.json` or project `opencode.json`:\n\n```json\n{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"mcp\": {\n    \"energy-rag\": {\n      \"type\": \"local\",\n      \"command\": [\"uv\", \"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"environment\": { \"RAG_API_URL\": \"http://localhost:8000\" },\n      \"enabled\": true\n    }\n  }\n}\n```\n\nRemote variant:\n\n```json\n{\n  \"mcp\": {\n    \"energy-rag\": {\n      \"type\": \"remote\",\n      \"url\": \"http://synology:8800/mcp\",\n      \"enabled\": true\n    }\n  }\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "opencode"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Cursor",
+    "body": "`.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):\n\n```json\n{\n  \"mcpServers\": {\n    \"energy-rag\": {\n      \"command\": \"uv\",\n      \"args\": [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"env\": { \"RAG_API_URL\": \"http://localhost:8000\" }\n    }\n  }\n}\n```\n\nCursor also accepts `\"url\": \"http://synology:8800/mcp\"` instead of\n`command`/`args` for HTTP servers.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "cursor"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Windsurf (Codeium)",
+    "body": "`~/.codeium/windsurf/mcp_config.json` — identical shape to Cursor's:\n\n```json\n{\n  \"mcpServers\": {\n    \"energy-rag\": {\n      \"command\": \"uv\",\n      \"args\": [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"env\": { \"RAG_API_URL\": \"http://localhost:8000\" }\n    }\n  }\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "windsurf-(codeium)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > OpenAI Codex CLI",
+    "body": "`~/.codex/config.toml`:\n\n```toml\n[mcp_servers.energy-rag]\ncommand = \"uv\"\nargs = [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"]\nenv = { \"RAG_API_URL\" = \"http://localhost:8000\" }\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "openai-codex-cli"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Google Gemini CLI",
+    "body": "`~/.gemini/settings.json`:\n\n```json\n{\n  \"mcpServers\": {\n    \"energy-rag\": {\n      \"command\": \"uv\",\n      \"args\": [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"env\": { \"RAG_API_URL\": \"http://localhost:8000\" },\n      \"trust\": true\n    }\n  }\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "google-gemini-cli"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Visual Studio Code (Copilot agent mode)",
+    "body": "`.vscode/mcp.json`:\n\n```json\n{\n  \"servers\": {\n    \"energy-rag\": {\n      \"type\": \"stdio\",\n      \"command\": \"uv\",\n      \"args\": [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"env\": { \"RAG_API_URL\": \"http://localhost:8000\" }\n    }\n  }\n}\n```\n\nHTTP variant: `{ \"type\": \"http\", \"url\": \"http://synology:8800/mcp\" }`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "visual-studio-code-(copilot-agent-mode)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > JetBrains IDEs (AI Assistant / Junie)",
+    "body": "Settings → Tools → AI Assistant → Model Context Protocol → add server:\ncommand `uv`, args\n`--directory /path/to/energy-data-rag-pipeline run energy-rag-mcp`,\nenvironment `RAG_API_URL=http://localhost:8000`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "jetbrains-ides-(ai-assistant-/-junie)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Cline / Roo Code (VS Code extensions)",
+    "body": "Extension UI → MCP Servers → Configure. Both write the same schema as Cursor\n(`cline_mcp_settings.json`): paste the Cursor snippet above.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "cline-/-roo-code-(vs-code-extensions)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Zed",
+    "body": "`settings.json`:\n\n```json\n{\n  \"context_servers\": {\n    \"energy-rag\": {\n      \"source\": \"custom\",\n      \"command\": \"uv\",\n      \"args\": [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"env\": { \"RAG_API_URL\": \"http://localhost:8000\" }\n    }\n  }\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "zed"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Goose",
+    "body": "`~/.config/goose/config.yaml`:\n\n```yaml\nextensions:\n  energy-rag:\n    cmd: uv\n    args: [--directory, /path/to/energy-data-rag-pipeline, run, energy-rag-mcp]\n    enabled: true\n    envs: { RAG_API_URL: \"http://localhost:8000\" }\n    type: stdio\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "goose"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Anything else (Aider, custom agents)",
+    "body": "Any client speaking MCP stdio can launch:\n\n```bash\nRAG_API_URL=http://localhost:8000 \\\n  uv --directory /path/to/energy-data-rag-pipeline run energy-rag-mcp\n```\n\nAny client speaking streamable HTTP can connect to\n`http://<host>:8800/mcp` once the compose stack is up.\n\n---",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "anything-else-(aider,-custom-agents)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > 4. Run Claude Code through FCC — from the repo root so .mcp.json is picked up > Verifying the wiring",
+    "body": "```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "4.-run-claude-code-through-fcc-—-from-the-repo-root-so-.mcp.json-is-picked-up",
+      "verifying-the-wiring"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > Handshake over stdio (no client needed):",
+    "body": "echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-03-26\",\"capabilities\":{},\"clientInfo\":{\"name\":\"smoke\",\"version\":\"0\"}}}' | \\\n  uv run energy-rag-mcp | head -1",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "handshake-over-stdio-(no-client-needed):"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > From Claude Code:",
+    "body": "/mcp            # lists servers + tools",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "from-claude-code:"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > Direct tool call smoke test against a running stack:",
+    "body": "curl -X POST http://localhost:8000/query -H 'Content-Type: application/json' \\\n  -d '{\"query\":\"VE.Direct protocol\",\"top_k\":2}'\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "direct-tool-call-smoke-test-against-a-running-stack:"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "MCP Integration > Direct tool call smoke test against a running stack: > Security notes",
+    "body": "- The MCP server trusts whoever can reach it. Keep `8800` off the public\n  internet; bind `127.0.0.1` locally or restrict access at the NAS firewall.\n- No secrets flow through the MCP layer — it only forwards queries to the\n  REST API. Provider keys stay in the api container env.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/mcp-integration.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "mcp-integration",
+      "direct-tool-call-smoke-test-against-a-running-stack:",
+      "security-notes"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > Versioning policy (three sources of truth)",
+    "body": "1. `pyproject.toml` → `version`\n2. root **`version`** file (read by deploy.sh and dashboards)\n3. git tag `v<version>` (triggers the release pipeline)\n\nAll three must carry the same string. Bump with:\n\n```bash\nuv version 0.3.0 && printf '0.3.0\\n' > version\ngit add pyproject.toml uv.lock version CHANGELOG.md\ngit commit -m \"chore(release): v0.3.0\"\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "release-&-multi-arch-images",
+      "versioning-policy-(three-sources-of-truth)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > Release runbook",
+    "body": "```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "release-&-multi-arch-images",
+      "release-runbook"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > 2. Tag & push",
+    "body": "git tag -a vX.Y.Z -m \"Release vX.Y.Z\" && git push origin vX.Y.Z\n```\n\nThe tag push triggers two workflows:\n\n- **release.yml** — full tests against pgvector service, build sdist/wheel,\n  create GitHub Release with artifacts.\n- **docker-publish.yml** — multi-platform image build and push to GHCR.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "2.-tag-&-push"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > 2. Tag & push > Multi-arch Docker images",
+    "body": "`.github/workflows/docker-publish.yml` builds for `linux/amd64` **and**\n`linux/arm64` using QEMU + Buildx with GHA layer cache, SBOM and provenance\nattestations, then verifies the manifest contains both platforms.\n\nImages (`ghcr.io/4alvit/energy-data-rag-pipeline`):\n\n| Trigger | Tags |\n|---|---|\n| tag `v1.2.3` | `1.2.3`, `1.2`, `1` |\n| push to `main` | `main` |\n| workflow_dispatch | per metadata-action defaults |\n\nWhy arm64 matters here: Synology NAS units are commonly arm64; building\nnatively-targeted images avoids slow QEMU execution at runtime and works out\nof the box with Container Manager.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "2.-tag-&-push",
+      "multi-arch-docker-images"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > 2. Tag & push > Multi-arch Docker images > Verifying a release image",
+    "body": "```bash\ndocker buildx imagetools inspect ghcr.io/4alvit/energy-data-rag-pipeline:X.Y.Z",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "2.-tag-&-push",
+      "multi-arch-docker-images",
+      "verifying-a-release-image"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > expect: linux/amd64 + linux/arm64 entries",
+    "body": "docker pull --platform linux/arm64 \\\n  ghcr.io/4alvit/energy-data-rag-pipeline:X.Y.Z\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "expect:-linux/amd64-+-linux/arm64-entries"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > expect: linux/amd64 + linux/arm64 entries > Local reproduction of CI build",
+    "body": "```bash\ndocker buildx build --platform linux/amd64,linux/arm64 -t energy-rag:local .\n```\n\n(Apple Silicon docker desktop runs arm64 natively; amd64 via Rosetta/QEMU.)",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "expect:-linux/amd64-+-linux/arm64-entries",
+      "local-reproduction-of-ci-build"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > expect: linux/amd64 + linux/arm64 entries > Consuming releases elsewhere",
+    "body": "Any machine with docker:\n\n```bash\nexport TAG=X.Y.Z POSTGRES_PASSWORD=... OLLAMA_BASE_URL=http://host:11434\ndocker compose -f deploy/docker-compose.prod.yml up -d\n```\n\nGHCR package visibility must be public (or configure\n`docker login ghcr.io` with a PAT having `read:packages`).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "expect:-linux/amd64-+-linux/arm64-entries",
+      "consuming-releases-elsewhere"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Release & Multi-Arch Images > expect: linux/amd64 + linux/arm64 entries > Post-release checklist",
+    "body": "- [ ] GitHub Release exists with wheel/sdist attached\n- [ ] GHCR shows both architectures for the new tag\n- [ ] `deploy/deploy.sh status` healthy on Synology after upgrade\n- [ ] `/health` reports correct new version string",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-and-images.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "release-and-images",
+      "expect:-linux/amd64-+-linux/arm64-entries",
+      "post-release-checklist"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > API > `/health` returns `degraded`",
+    "body": "Database unreachable. From the repo root:\n\n```bash\ndocker compose exec postgres pg_isready -U rag -d energy_rag\ndocker compose logs postgres --tail 50",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "troubleshooting",
+      "api",
+      "`/health`-returns-`degraded`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one:",
+    "body": "docker compose down -v        # WARNING: wipes stored documents\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Query returns \"I don't have enough information...\"",
+    "body": "Nothing passed the similarity threshold. Checklist:\n\n1. Anything ingested?\n   `SELECT count(*) FROM documents;`\n2. Chunks have embeddings? (`embedding IS NULL` rows are invisible to search)\n3. Threshold too strict — default is 0.3; MiniLM models rarely score above 0.6 even on good matches.\n4. LLM reachable: `curl $OLLAMA_BASE_URL/api/tags` from inside the container:\n   `docker compose exec api python -c \"import httpx;print(httpx.get('http://host.docker.internal:11434/api/tags').status_code)\"`",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "query-returns-\"i-don't-have-enough-information...\""
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > 503 on /query",
+    "body": "RAG components not initialized — check startup errors in\n`docker compose logs api`. Typical cause: Ollama down at startup.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "503-on-/query"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Ingestion > Ingestion \"started\" but nothing appears",
+    "body": "Paths must exist **inside the api container**. Host `./data/manuals` is\ncontainer `/data/manuals`. Check run status:\n\n```bash\ndocker compose exec postgres psql -U rag -d energy_rag \\\n  -c \"SELECT status, error_message FROM ingestion_runs ORDER BY started_at DESC LIMIT 1;\"\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "ingestion",
+      "ingestion-\"started\"-but-nothing-appears"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Ingestion > forum_json rejected",
+    "body": "Loader expects **one JSON document** with an array of posts (or object with a\n`posts`-like key) — not JSONL. Re-export via\n`scripts/export_docs_corpus.py`, which produces the right shape.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "ingestion",
+      "forum_json-rejected"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Ingestion > Embedding model mismatch",
+    "body": "`EMBEDDING_MODEL` dimension must equal the SQL column (384 by default). See\n[ingestion-and-chunking.md](ingestion-and-chunking.md#re-embedding-after-a-model-change).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "ingestion",
+      "embedding-model-mismatch"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Docker > Healthcheck fails while app is fine",
+    "body": "The image has no `curl`; healthchecks intentionally use `python -c urllib`.\nIf you edited them back to curl, restore the python form.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "docker",
+      "healthcheck-fails-while-app-is-fine"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Docker > First start is slow",
+    "body": "Model download (~100 MB) happens once per container lifecycle; give the\nhealthcheck its 120 s `start_period`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "docker",
+      "first-start-is-slow"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Docker > Port conflicts",
+    "body": "Change host-side mappings in `.env`: `API_PORT`, `MCP_PORT`,\n`POSTGRES_PORT` (dev compose).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "docker",
+      "port-conflicts"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > MCP > Client shows server but no tools",
+    "body": "Stdio spawn failed. Run the exact command manually:\n\n```bash\nRAG_API_URL=http://localhost:8000 \\\n  uv --directory /path/to/energy-data-rag-pipeline run energy-rag-mcp\n```\n\nIt should block silently (waiting for JSON-RPC on stdin). Errors print to\nstderr.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "mcp",
+      "client-shows-server-but-no-tools"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > MCP > \"Cannot reach RAG API\" from tools",
+    "body": "`RAG_API_URL` wrong or stack down. Inside stdio servers `localhost` means the\nworkstation, not the NAS — use `http://synology:8000`.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "mcp",
+      "\"cannot-reach-rag-api\"-from-tools"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > MCP > Claude Code doesn't prompt for .mcp.json",
+    "body": "Run `claude mcp list` in the repo root, then `/mcp` in the session; approve\nthe project server when asked.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "mcp",
+      "claude-code-doesn't-prompt-for-.mcp.json"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Synology > deploy.sh dies at preflight",
+    "body": "- Passwordless ssh broken → `ssh-copy-id synology`\n- Passwordless sudo missing → add sudoers drop-in (see deployment doc)",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "synology",
+      "deploy.sh-dies-at-preflight"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Troubleshooting > Wrong password after editing .env? The volume kept the old one: > Synology > Image pull rate-limited or private",
+    "body": "GHCR anonymous pulls are limited; either make the package public\n(Package settings → change visibility) or `docker login ghcr.io` on the NAS.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/troubleshooting.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "troubleshooting",
+      "wrong-password-after-editing-.env?-the-volume-kept-the-old-one:",
+      "synology",
+      "image-pull-rate-limited-or-private"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline",
+    "body": "![Python](https://img.shields.io/badge/python-3.11+-blue.svg)\n![License](https://img.shields.io/badge/license-MIT-green.svg)\n![Build](https://github.com/4alvit/energy-data-rag-pipeline/actions/workflows/ci.yml/badge.svg)\n![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)\n![Type Checking: Pylint](https://img.shields.io/badge/type%20checking-pylint-blue.svg)\n![Tests](https://img.shields.io/badge/tests-pytest-green.svg)\n![SonarCloud](https://sonarcloud.io/api/project_badges/measure?project=victron-venus_energy-data-rag-pipeline&metric=alert_status)\n![Docker](https://img.shields.io/badge/docker-compose-2496ED.svg?logo=docker&logoColor=white)\n\nRAG (Retrieval-Augmented Generation) pipeline for Victron Energy documentation and community knowledge. Built with FastAPI, LangChain, pgvector, and PostgreSQL.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "energy-data-rag-pipeline"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Features",
+    "body": "- **Document Ingestion**: Victron PDF manuals, community forum posts (HTML/JSON)\n- **Smart Chunking**: Technical documentation-aware splitting preserving hierarchy\n- **Vector Storage**: pgvector with metadata filtering (product, section, page)\n- **FastAPI Query Endpoint**: RESTful API with source citations\n- **LangChain Retrieval**: LCEL chains with configurable LLM providers\n- **MCP Server**: Plug the knowledge base into Claude Code, opencode, Cursor,\n  Codex CLI, Gemini CLI and any MCP-capable agent ([docs](docs/mcp-integration.md))\n- **Free Claude Code**: run agents (and this API's answer generation) through\n  [FCC's](https://github.com/Alishahryar1/free-claude-code) free provider\n  proxy — no paid Anthropic plan or local Ollama required\n  ([client setup](docs/mcp-integration.md#free-claude-code-fcc--claude-code-without-a-paid-plan),\n  [LLM backend](docs/configuration.md#free-llm-via-free-claude-code-fcc))\n- **Multi-Arch Images**: linux/amd64 + linux/arm64 on GHCR for every release\n- **Synology Deployment**: one-command deploys via gitignored `deploy/deploy.sh`\n  ([docs](docs/deployment-synology.md))\n- **Docker Compose**: PostgreSQL + pgvector + API + MCP in one stack",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "energy-data-rag-pipeline",
+      "features"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Documentation",
+    "body": "Full RAG-consumable documentation lives in [`docs/`](docs/index.md) — start at\nthe [index](docs/index.md). `scripts/export_docs_corpus.py` turns it into\n`docs-corpus/corpus.json` that can be ingested by this very pipeline.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "energy-data-rag-pipeline",
+      "documentation"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Quickstart",
+    "body": "```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "energy-data-rag-pipeline",
+      "quickstart"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Clone and enter",
+    "body": "cd energy-data-rag-pipeline",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "clone-and-enter"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Copy env template",
+    "body": "cp .env.example .env",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "copy-env-template"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Start services (postgres + api + mcp)",
+    "body": "docker compose up -d",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "start-services-(postgres-+-api-+-mcp)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Verify health",
+    "body": "curl http://localhost:8000/health",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "verify-health"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Put manuals into ./data/manuals then ingest them",
+    "body": "curl -X POST http://localhost:8000/ingest \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"source_type\": \"pdf\", \"paths\": [\"/data/manuals\"]}'",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "put-manuals-into-./data/manuals-then-ingest-them"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG",
+    "body": "curl -X POST http://localhost:8000/query \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"query\": \"How to configure ESS grid-zero on MultiPlus-II?\", \"top_k\": 5}'\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > Feed the project's own docs to the RAG",
+    "body": "```bash\npython3 scripts/export_docs_corpus.py     # builds docs-corpus/corpus.json\ncurl -X POST http://localhost:8000/ingest \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"source_type\": \"forum_json\", \"paths\": [\"/data/docs-corpus/corpus.json\"], \"chunk_strategy\": \"recursive\"}'\n```\n\n(`./data` is mounted at `/data` inside the api container.)",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "feed-the-project's-own-docs-to-the-rag"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > Connect your AI coding agent",
+    "body": "```jsonc\n// .mcp.json / client config — see docs/mcp-integration.md for all clients\n{\n  \"mcpServers\": {\n    \"energy-rag\": {\n      \"type\": \"stdio\",\n      \"command\": \"uv\",\n      \"args\": [\"--directory\", \"/path/to/energy-data-rag-pipeline\", \"run\", \"energy-rag-mcp\"],\n      \"env\": { \"RAG_API_URL\": \"http://localhost:8000\" }\n    }\n  }\n}\n```\n\nThen ask things like *“rag_ask: how do I set up DVCC on a Cerbo GX?”* right in\nClaude Code, opencode, Cursor, Windsurf, Codex CLI, Gemini CLI, Goose, Zed,\nVS Code Copilot or JetBrains.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "connect-your-ai-coding-agent"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > Architecture > Data Flow",
+    "body": "```mermaid\ngraph TD\n    subgraph Ingestion\n        PDF[PDF Manuals] --> PDFLoader[PyMuPDF Loader]\n        HTML[Forum HTML] --> HTMLLoader[BeautifulSoup Loader]\n        JSON[Forum JSON] --> JSONLoader[JSON Loader]\n        PDFLoader --> Pipeline[Ingestion Pipeline]\n        HTMLLoader --> Pipeline\n        JSONLoader --> Pipeline\n    end\n\n    subgraph Chunking\n        Pipeline --> MarkdownSplitter[MarkdownHeaderTextSplitter]\n        MarkdownSplitter -->|Headers found| Chunks[Chunks with metadata]\n        MarkdownSplitter -->|No headers| RecursiveSplitter[RecursiveCharacterTextSplitter]\n        RecursiveSplitter --> Chunks\n    end\n\n    subgraph Storage\n        Chunks --> Embeddings[Sentence Transformers]\n        Embeddings --> PGVector[pgvector / PostgreSQL 16]\n        PGVector --> |IVFFlat index| VectorSearch\n        PGVector --> |GIN index| MetadataFilter\n    end\n\n    subgraph Query\n        UserQuery[User Question] --> VectorSearch\n        MetadataFilter --> VectorSearch\n        VectorSearch --> Retriever[LangChain Retriever]\n        Retriever --> LLM[\"LLM (Ollama/OpenAI/Anthropic)\"]\n        LLM --> Answer[Answer with citations]\n    end\n\n    style PGVector fill:#336791,color:#fff\n    style LLM fill:#f04e23,color:#fff\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "architecture",
+      "data-flow"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > Architecture > Component Overview",
+    "body": "```mermaid\ngraph LR\n    A[Ingestion\\nPDF + Forum] --> B[Chunking\\nMarkdown + Recursive]\n    B --> C[Embeddings\\nall-MiniLM-L6-v2]\n    C --> D[pgvector\\nPostgreSQL 16]\n    D --> E[Retrieval\\nLangChain + LLM]\n    E --> F[Answer + Citations]\n    \n    style D fill:#336791,color:#fff\n    style E fill:#f04e23,color:#fff\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "architecture",
+      "component-overview"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > Configuration",
+    "body": "| Variable | Default | Description |\n|----------|---------|-------------|\n| `DATABASE_URL` | `postgresql+asyncpg://rag:changeme@localhost:5432/energy_rag` | PostgreSQL connection |\n| `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Embedding model (384-dim) |\n| `LLM_PROVIDER` | `ollama` | `ollama`, `openai`, `anthropic` |\n| `LLM_MODEL` | `llama3.1:8b` | LLM model name |\n| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |\n| `LOG_LEVEL` | `INFO` | Logging level |",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "configuration"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > API Endpoints > `POST /query`",
+    "body": "Query the RAG system.\n\n**Request:**\n```json\n{\n  \"query\": \"How to configure ESS grid-zero?\",\n  \"top_k\": 5,\n  \"filters\": {\"product\": \"MultiPlus-II\"},\n  \"include_citations\": true\n}\n```\n\n**Response:**\n```json\n{\n  \"answer\": \"To configure ESS grid-zero on MultiPlus-II...\",\n  \"sources\": [\n    {\n      \"content\": \"ESS Grid-zero configuration...\",\n      \"metadata\": {\"product\": \"MultiPlus-II\", \"section\": \"ESS\", \"page\": 42},\n      \"score\": 0.92\n    }\n  ],\n  \"processing_time_ms\": 245\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "api-endpoints",
+      "`post-/query`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > API Endpoints > `POST /ingest`",
+    "body": "Trigger document ingestion.\n\n**Request:**\n```json\n{\n  \"source_type\": \"pdf\",\n  \"paths\": [\"/data/manuals/multiplus-ii.pdf\"]\n}\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "api-endpoints",
+      "`post-/ingest`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > API Endpoints > `GET /health`",
+    "body": "Health check with DB connectivity.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "api-endpoints",
+      "`get-/health`"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > Chunking Strategy",
+    "body": "1. **MarkdownHeaderTextSplitter** - Splits by `# ## ###` preserving document hierarchy\n2. **RecursiveCharacterTextSplitter** - Fallback for unstructured text (chunk_size=1000, overlap=200)\n3. **Metadata enrichment**: `doc_type`, `product_line`, `section_title`, `page_num`, `url`, `source`",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "chunking-strategy"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Query the RAG > Development",
+    "body": "```bash",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "query-the-rag",
+      "development"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Install dependencies",
+    "body": "uv sync --dev",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "install-dependencies"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Install pre-commit hooks",
+    "body": "uv run pre-commit install",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "install-pre-commit-hooks"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Run tests",
+    "body": "uv run pytest",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "run-tests"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Lint",
+    "body": "uv run ruff check .\nuv run ruff format .",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "lint"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Type check (if using mypy)",
+    "body": "uv run pylint src/energy_rag\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "type-check-(if-using-mypy)"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Type check (if using mypy) > CI/CD",
+    "body": "- **CI** (`.github/workflows/ci.yml`): Ruff, Pylint, pytest + coverage,\n  SonarCloud\n- **Release** (`.github/workflows/release.yml`): on `v*` tags — tests, build,\n  GitHub Release with artifacts\n- **Docker Publish** (`.github/workflows/docker-publish.yml`): multi-arch\n  (amd64+arm64) images to `ghcr.io/4alvit/energy-data-rag-pipeline`\n\nVersioning: root `version` file = `pyproject.toml` version = git tag. Runbook:\n[docs/release-and-images.md](docs/release-and-images.md).",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "type-check-(if-using-mypy)",
+      "ci/cd"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Type check (if using mypy) > Project Structure",
+    "body": "```mermaid\ngraph TD\n    Root[energy-data-rag-pipeline]\n    Root --> Src[src/energy_rag]\n    Root --> Tests[tests/]\n    Root --> Scripts[scripts/]\n    Root --> SQL[sql/]\n    Root --> Docker[docker-compose.yml]\n    Root --> Dockerfile[Dockerfile]\n    Root --> PyProject[pyproject.toml]\n\n    Src --> Config[config.py]\n    Src --> Ingestion[ingestion/]\n    Src --> Chunking[chunking/]\n    Src --> Storage[storage/]\n    Src --> Retrieval[retrieval/]\n    Src --> API[api/]\n\n    Ingestion --> PDFLoader[pdf_loader.py]\n    Ingestion --> ForumLoader[forum_loader.py]\n    Ingestion --> Pipeline[pipeline.py]\n\n    Chunking --> Technical[technical.py]\n\n    Storage --> Models[models.py]\n    Storage --> PgVector[pgvector.py]\n    Storage --> Repository[repository.py]\n\n    Retrieval --> Chain[chain.py]\n    Retrieval --> Citations[citations.py]\n    Retrieval --> Rerank[rerank.py]\n\n    API --> Main[main.py]\n    API --> Schemas[schemas.py]\n    API --> Routes[routes/]\n    Routes --> Health[health.py]\n    Routes --> Query[query.py]\n    Routes --> Ingest[ingest.py]\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "type-check-(if-using-mypy)",
+      "project-structure"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "Energy Data RAG Pipeline > Type check (if using mypy) > License",
+    "body": "MIT",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
+    "author": "project-docs",
+    "created_at": "2026-08-24T06:13:16+00:00",
+    "tags": [
+      "project-docs",
+      "README",
+      "type-check-(if-using-mypy)",
+      "license"
+    ],
+    "score": 10,
+    "accepted": true
+  }
+]

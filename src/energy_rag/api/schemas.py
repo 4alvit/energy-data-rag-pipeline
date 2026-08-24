@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from energy_rag import __version__
+
 
 class QueryRequest(BaseModel):
     """Request model for RAG query."""
@@ -32,6 +34,21 @@ class QueryResponse(BaseModel):
     processing_time_ms: int
 
 
+class SearchRequest(BaseModel):
+    """Request model for pure semantic retrieval (no LLM)."""
+
+    query: str = Field(..., min_length=1, max_length=2000, description="User question")
+    top_k: int = Field(default=5, ge=1, le=20, description="Number of documents to retrieve")
+    filters: dict[str, Any] | None = Field(default=None, description="Metadata filters")
+
+
+class SearchResponse(BaseModel):
+    """Response model for semantic retrieval."""
+
+    results: list[SourceResponse] = []
+    processing_time_ms: int
+
+
 class IngestRequest(BaseModel):
     """Request model for document ingestion."""
 
@@ -55,7 +72,7 @@ class HealthResponse(BaseModel):
 
     status: str
     database: str
-    version: str = "0.1.0"
+    version: str = __version__
 
 
 class ErrorResponse(BaseModel):

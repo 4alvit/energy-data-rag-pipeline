@@ -42,6 +42,13 @@ class Settings(BaseSettings):
         default="llama3.1:8b",
         description="LLM model name",
     )
+    llm_base_url: str = Field(
+        default="",
+        description=(
+            "Optional base-URL override for the openai/anthropic clients "
+            "(e.g. a local Free Claude Code proxy at http://localhost:8082)"
+        ),
+    )
 
     # Ollama
     ollama_base_url: str = Field(
@@ -67,8 +74,11 @@ class Settings(BaseSettings):
         description="Default number of documents to retrieve",
     )
     similarity_threshold: float = Field(
-        default=0.7,
-        description="Minimum cosine similarity threshold",
+        default=0.3,
+        description=(
+            "Minimum cosine similarity. all-MiniLM-L6-v2 typically scores "
+            "0.3-0.6 on relevant text; higher values filter aggressively."
+        ),
     )
     enable_rerank: bool = Field(
         default=False,

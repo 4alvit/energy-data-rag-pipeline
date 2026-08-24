@@ -4,6 +4,7 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -83,7 +84,7 @@ class PgVectorDatabase:
         """Check database connectivity."""
         try:
             async with self.session() as session:
-                await session.execute("SELECT 1")
+                await session.execute(text("SELECT 1"))
             return True
         except Exception as e:
             logger.error("Database health check failed: %s", e)
@@ -115,3 +116,25 @@ async def init_database(database_url: str | None = None) -> PgVectorDatabase:
     global _db
     _db = PgVectorDatabase(database_url)
     return _db
+
+
+async def ensure_vector_extension(database_url: str | None = None) -> bool:
+    """Ensure the pgvector extension exists.
+
+    langchain_postgres's own async creation path sends two statements in one
+    prepared statement, which asyncpg rejects - hence this single-statement
+    helper. Safe to call repeatedly.
+
+    Returns True when the extension is present afterwards.
+    """
+    url = database_url or settings.database_url
+    engine = create_async_engine(url, echo=False)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        return True
+    except Exception as exc:
+        logger.warning("Could not ensure pgvector extension: %s", exc)
+        return False
+    finally:
+        await engine.dispose()

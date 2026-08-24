@@ -14,11 +14,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml uv.lock* ./
+# Copy dependency files first for layer caching
+COPY pyproject.toml uv.lock* README.md version ./
+
+# Project sources are needed because uv installs the root package itself
+COPY src/ ./src/
 
 # Create virtual environment and install dependencies
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --extra mcp --extra openai --extra anthropic
 
 # Runtime stage
 FROM python:3.14-slim@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4 AS runtime
@@ -41,6 +45,13 @@ COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 # Copy application code
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser scripts/ ./scripts/
+
+# Writable cache dirs for model downloads (appuser has no $HOME)
+ENV HF_HOME=/app/.cache/huggingface \
+    XDG_CACHE_HOME=/app/.cache \
+    TRANSFORMERS_HOME=/app/.cache/transformers
+
+RUN mkdir -p /app/.cache && chown -R appuser:appuser /app/.cache
 
 # Switch to non-root user
 USER appuser

@@ -18,7 +18,23 @@ RAG (Retrieval-Augmented Generation) pipeline for Victron Energy documentation a
 - **Vector Storage**: pgvector with metadata filtering (product, section, page)
 - **FastAPI Query Endpoint**: RESTful API with source citations
 - **LangChain Retrieval**: LCEL chains with configurable LLM providers
-- **Docker Compose**: PostgreSQL + pgvector + API in one stack
+- **MCP Server**: Plug the knowledge base into Claude Code, opencode, Cursor,
+  Codex CLI, Gemini CLI and any MCP-capable agent ([docs](docs/mcp-integration.md))
+- **Free Claude Code**: run agents (and this API's answer generation) through
+  [FCC's](https://github.com/Alishahryar1/free-claude-code) free provider
+  proxy — no paid Anthropic plan or local Ollama required
+  ([client setup](docs/mcp-integration.md#free-claude-code-fcc--claude-code-without-a-paid-plan),
+  [LLM backend](docs/configuration.md#free-llm-via-free-claude-code-fcc))
+- **Multi-Arch Images**: linux/amd64 + linux/arm64 on GHCR for every release
+- **Synology Deployment**: one-command deploys via gitignored `deploy/deploy.sh`
+  ([docs](docs/deployment-synology.md))
+- **Docker Compose**: PostgreSQL + pgvector + API + MCP in one stack
+
+## Documentation
+
+Full RAG-consumable documentation lives in [`docs/`](docs/index.md) — start at
+the [index](docs/index.md). `scripts/export_docs_corpus.py` turns it into
+`docs-corpus/corpus.json` that can be ingested by this very pipeline.
 
 ## Quickstart
 
@@ -30,20 +46,53 @@ cd energy-data-rag-pipeline
 cp .env.example .env
 # Edit .env with your settings
 
-# Start services
+# Start services (postgres + api + mcp)
 docker compose up -d
 
 # Verify health
 curl http://localhost:8000/health
 
-# Ingest sample documents
-docker compose exec api energy-rag-ingest --source-type pdf --path /data/manuals
+# Put manuals into ./data/manuals then ingest them
+curl -X POST http://localhost:8000/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"source_type": "pdf", "paths": ["/data/manuals"]}'
 
 # Query the RAG
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{"query": "How to configure ESS grid-zero on MultiPlus-II?", "top_k": 5}'
 ```
+
+### Feed the project's own docs to the RAG
+
+```bash
+python3 scripts/export_docs_corpus.py     # builds docs-corpus/corpus.json
+curl -X POST http://localhost:8000/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"source_type": "forum_json", "paths": ["/data/docs-corpus/corpus.json"], "chunk_strategy": "recursive"}'
+```
+
+(`./data` is mounted at `/data` inside the api container.)
+
+### Connect your AI coding agent
+
+```jsonc
+// .mcp.json / client config — see docs/mcp-integration.md for all clients
+{
+  "mcpServers": {
+    "energy-rag": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "/path/to/energy-data-rag-pipeline", "run", "energy-rag-mcp"],
+      "env": { "RAG_API_URL": "http://localhost:8000" }
+    }
+  }
+}
+```
+
+Then ask things like *“rag_ask: how do I set up DVCC on a Cerbo GX?”* right in
+Claude Code, opencode, Cursor, Windsurf, Codex CLI, Gemini CLI, Goose, Zed,
+VS Code Copilot or JetBrains.
 
 ## Architecture
 
@@ -183,11 +232,15 @@ uv run pylint src/energy_rag
 
 ## CI/CD
 
-GitHub Actions workflow (`.github/workflows/ci.yml`):
-- Ruff linting & formatting
-- Pylint
-- Pytest with coverage
-- SonarCloud analysis
+- **CI** (`.github/workflows/ci.yml`): Ruff, Pylint, pytest + coverage,
+  SonarCloud
+- **Release** (`.github/workflows/release.yml`): on `v*` tags — tests, build,
+  GitHub Release with artifacts
+- **Docker Publish** (`.github/workflows/docker-publish.yml`): multi-arch
+  (amd64+arm64) images to `ghcr.io/4alvit/energy-data-rag-pipeline`
+
+Versioning: root `version` file = `pyproject.toml` version = git tag. Runbook:
+[docs/release-and-images.md](docs/release-and-images.md).
 
 ## Project Structure
 
