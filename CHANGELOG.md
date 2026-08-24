@@ -30,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server: headless image `ghcr.io/4alvit/free-claude-code`
   (`deploy/fcc/Dockerfile`, upstream pinned by commit SHA) deployed as the
   `fcc` service in the production compose stack (Admin UI + proxy on port
-  8082, config persisted in a named volume)
+  8082, config persisted in a named volume, host networking so an SSH
+  tunnel reaches the loopback-only Admin UI)
 - Root `version` file synced with pyproject and release tags
 - Unit tests: citations, CLI parser, corpus exporter, MCP server
 
