@@ -64,7 +64,8 @@ def test_format_citations_appends_references():
     out = format_citations("Answer text.", sources)
     assert "**Sources:**" in out
     assert "[1]" in out
-    assert "https://example.com" in out
+    # Exact-token match (not substring) - the URL must appear verbatim.
+    assert "https://example.com" in out.split()
 
 
 def test_format_citations_without_sources_is_identity():
