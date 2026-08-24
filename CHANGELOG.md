@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-08-24
+
+### Fixed
+- `deploy.sh` pre-creates `DATA_ROOT/pgdata`; Synology's dockerd does not
+  auto-create missing bind dirs on first `up -d`
+- api healthcheck `start_period` 120 s -> 600 s and a persistent `hf_cache`
+  volume: first-boot embedding-model downloads on slow NAS disks blew the old
+  window and re-downloaded ~100 MB on every container recreation
+- Container healthcheck exec timeout 5 s -> 10 s: `python -c` startup on a
+  busy NAS flapped checks to unhealthy while `/health` answered 200
+- FCC provider config moved to gitignored `deploy/fcc.env` uploaded by
+  `deploy.sh` and consumed by the compose `fcc` service via `env_file`;
+  Admin UI is optional again
+- `query_rag` flattens Anthropic-style content-block lists (reasoning models
+  reached through Free Claude Code, e.g. nvidia/nemotron) before citation
+  extraction instead of crashing with "expected string or bytes-like object"
+
 ## [0.2.0] - 2026-08-23
 
 ### Added
