@@ -45,7 +45,11 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Data
+# Data (local ingests; docs-corpus/ IS committed - it is generated but published)
 *.pdf
-data/
+/data/
 chroma/
+
+# Local deployment (never commit)
+deploy/deploy.sh
+deploy/.env

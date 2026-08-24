@@ -5,7 +5,13 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from energy_rag.api.schemas import QueryRequest, QueryResponse, SourceResponse
+from energy_rag.api.schemas import (
+    QueryRequest,
+    QueryResponse,
+    SearchRequest,
+    SearchResponse,
+    SourceResponse,
+)
 from energy_rag.config import settings
 from energy_rag.retrieval.chain import query_rag
 
@@ -61,6 +67,43 @@ async def query_rag_endpoint(request: QueryRequest) -> QueryResponse:
 
     except Exception as exc:
         logger.exception("Query failed")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.post("/search", response_model=SearchResponse)
+async def search_endpoint(request: SearchRequest) -> SearchResponse:
+    """
+    Pure semantic retrieval without LLM generation.
+
+    Useful when no LLM provider is configured (NAS deployments) or for
+    building custom pipelines on top of the vector store.
+    """
+    import time
+
+    if _vector_store is None:
+        raise HTTPException(
+            status_code=503,
+            detail="RAG system not initialized. Check service logs.",
+        )
+
+    start_time = time.perf_counter()
+
+    try:
+        docs_with_scores = await _vector_store.asimilarity_search(
+            request.query,
+            k=request.top_k,
+            filter=request.filters,
+        )
+        results = [
+            SourceResponse(index=i, content=doc.page_content, metadata=doc.metadata)
+            for i, doc in enumerate(docs_with_scores, 1)
+        ]
+        return SearchResponse(
+            results=results,
+            processing_time_ms=int((time.perf_counter() - start_time) * 1000),
+        )
+    except Exception as exc:
+        logger.exception("Search failed")
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 

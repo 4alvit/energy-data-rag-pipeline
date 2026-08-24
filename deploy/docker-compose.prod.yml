@@ -1,0 +1,124 @@
+# Production stack for Synology / NAS deployment.
+# Pulls prebuilt multi-arch images from GHCR - no build step on the NAS.
+#
+# Usage (on the Synology via SSH):
+#   export TAG=<version>            # e.g. v0.2.0
+#   sudo docker compose -f deploy/docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: energy-rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: energy_rag
+      POSTGRES_USER: rag
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ${DATA_ROOT:-/volume1/docker/energy-rag}/pgdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag -d energy_rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: ghcr.io/4alvit/energy-data-rag-pipeline:${TAG:-latest}
+    container_name: energy-rag-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rag:${POSTGRES_PASSWORD}@postgres:5432/energy_rag
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-llama3.1:8b}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://192.168.1.50:11434}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${DATA_ROOT:-/volume1/docker/energy-rag}/data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  mcp:
+    image: ghcr.io/4alvit/energy-data-rag-pipeline:${TAG:-latest}
+    container_name: energy-rag-mcp
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    command:
+      ["energy-rag-mcp", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8800"]
+    environment:
+      RAG_API_URL: http://api:8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${MCP_PORT:-8800}:8800"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s=socket.create_connection(('localhost',8800),timeout=3); s.close()",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  fcc:
+    image: ghcr.io/4alvit/free-claude-code:${TAG:-latest}
+    container_name: energy-rag-fcc
+    restart: unless-stopped
+    # Host networking is deliberate: FCC's Admin UI rejects any request whose
+    # client IP or Origin header is not loopback (hardcoded local-only guard).
+    # With host networking an SSH tunnel (`ssh -L 8082:127.0.0.1:8082 nas`)
+    # presents genuine loopback, so `http://localhost:8082/admin` works from
+    # a workstation while LAN clients can reach only the proxy endpoints.
+    network_mode: host
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${FCC_PORT:-8082}
+      FCC_OPEN_BROWSER: "false"
+      MESSAGING_PLATFORM: none
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Optional headless provisioning - takes precedence over Admin UI values
+      # until changed there (Admin UI persists its own ~/.fcc/.env).
+      NVIDIA_NIM_API_KEY: ${NVIDIA_NIM_API_KEY:-}
+      MODEL: ${FCC_MODEL:-nvidia_nim/nvidia/nemotron-3-super-120b-a12b}
+    volumes:
+      - fcc_config:/home/fcc/.fcc
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s=socket.create_connection(('localhost',${FCC_PORT:-8082}),timeout=3); s.close()",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  fcc_config:
