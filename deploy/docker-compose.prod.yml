@@ -104,10 +104,10 @@ services:
       FCC_OPEN_BROWSER: "false"
       MESSAGING_PLATFORM: none
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      # Optional headless provisioning - takes precedence over Admin UI values
-      # until changed there (Admin UI persists its own ~/.fcc/.env).
-      NVIDIA_NIM_API_KEY: ${NVIDIA_NIM_API_KEY:-}
-      MODEL: ${FCC_MODEL:-nvidia_nim/nvidia/nemotron-3-super-120b-a12b}
+    # Provider credentials come from ./fcc.env (uploaded by deploy.sh;
+    # container env takes precedence over the Admin UI's stored ~/.fcc/fcc.env).
+    env_file:
+      - ./fcc.env
     volumes:
       - fcc_config:/home/fcc/.fcc
     healthcheck:
