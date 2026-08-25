@@ -186,19 +186,24 @@ upload_docs_corpus() {
 }
 
 upload_victron_content() {
-  log "Uploading Victron manuals + community corpus..."
-  for dir in manuals community; do
+  log "Uploading Victron manuals + community + sibling-projects corpora..."
+  for dir in manuals community projects; do
     if [ ! -d "$REPO_DIR/data/$dir" ]; then
-      log "No data/$dir/ - fetching it now (scripts/fetch_victron_content.py)."
-      "$REPO_DIR/scripts/fetch_victron_content.py" --out "$REPO_DIR/data"
+      case "$dir" in
+        projects) "$REPO_DIR/scripts/export_projects_corpus.py" --out "$REPO_DIR/data/projects" ;;
+        *)        "$REPO_DIR/scripts/fetch_victron_content.py" --out "$REPO_DIR/data" ;;
+      esac
     fi
   done
   rsync -az --delete "$REPO_DIR/data/manuals/"   "$SSH_TARGET:$DATA_ROOT/data/manuals/"
   rsync -az --delete "$REPO_DIR/data/community/" "$SSH_TARGET:$DATA_ROOT/data/community/"
+  rsync -az --delete "$REPO_DIR/data/projects/"  "$SSH_TARGET:$DATA_ROOT/data/projects/"
   log "Ingesting /data/manuals (pdf, technical chunks) inside api container..."
   trigger_ingest '{"source_type":"pdf","paths":["/data/manuals"],"chunk_strategy":"technical"}' Manuals
   log "Ingesting /data/community (forum_json) inside api container..."
   trigger_ingest '{"source_type":"forum_json","paths":["/data/community"],"chunk_strategy":"recursive"}' Community
+  log "Ingesting /data/projects (forum_json) inside api container..."
+  trigger_ingest '{"source_type":"forum_json","paths":["/data/projects"],"chunk_strategy":"recursive"}' Projects
   log "Corpus ingestion complete. Chunk counts: deploy/deploy.sh logs api | grep Stored"
 }
 

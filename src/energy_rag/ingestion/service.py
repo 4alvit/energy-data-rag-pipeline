@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 
 from langchain_core.documents import Document
+from sqlalchemy import text
 
 from energy_rag.chunking import create_chunker
 from energy_rag.ingestion import create_ingestion_pipeline
@@ -17,6 +18,25 @@ from energy_rag.storage.pgvector import ensure_vector_extension, get_database, i
 from energy_rag.storage.repository import DocumentRepository
 
 logger = logging.getLogger(__name__)
+
+# The PGVector table is created by langchain_postgres itself (fixed default
+# name; the collection only lives in a separate table).
+_EMBEDDING_TABLE = "langchain_pg_embedding"
+
+
+async def _stored_sources(session) -> set[str]:
+    """Source paths already present in the vector store (for idempotent re-ingest)."""
+    rows = await session.execute(
+        text(
+            f"select distinct cmetadata->>'source' from {_EMBEDDING_TABLE} where cmetadata ? 'source'"
+        )
+    )
+    return {r[0] for r in rows if r[0]}
+
+
+def _fresh_documents(documents: list[Document], stored_sources: set[str]) -> list[Document]:
+    """Drop documents whose source file was already ingested."""
+    return [d for d in documents if d.metadata.get("source") not in stored_sources]
 
 
 def _load_documents(pipeline, source_type: str, path: Path, recursive: bool) -> list[Document]:
@@ -75,20 +95,26 @@ async def run_ingestion(
         )
 
         try:
+            stored_sources = await _stored_sources(session)
             for path in paths:
                 if not path.exists():
                     logger.warning("Path does not exist, skipping: %s", path)
                     continue
 
                 documents = _load_documents(pipeline, source_type, path, recursive)
-                if not documents:
+                fresh = _fresh_documents(documents, stored_sources)
+                skipped = len(documents) - len(fresh)
+                if skipped:
+                    logger.info("Skipping %d already-ingested documents for %s", skipped, path)
+                if not fresh:
                     continue
 
                 # Embed and store via the vector store (async-native path).
                 ids = await vector_store.aadd_texts(
-                    texts=[d.page_content for d in documents],
-                    metadatas=[d.metadata for d in documents],
+                    texts=[d.page_content for d in fresh],
+                    metadatas=[d.metadata for d in fresh],
                 )
+                stored_sources.update(d.metadata.get("source") for d in fresh)
 
                 docs_processed += 1
                 chunks_created += len(ids)
