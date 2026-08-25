@@ -35,13 +35,30 @@ COMMUNITY = "https://community.victronenergy.com"
 UA = {"User-Agent": "Mozilla/5.0 (energy-data-rag-pipeline corpus fetcher)"}
 
 # Product pages whose English manuals should be mirrored.
+# Slugs verified against https://www.victronenergy.com/sitemap.xml.
 PRODUCT_PAGES = {
+    # inverters/chargers
     "multiplus-ii-gx": f"{BASE}/inverters-chargers/multiplus-ii-gx",
     "multiplus-ii": f"{BASE}/inverters-chargers/multiplus-ii",
-    "cerbo-gx": f"{BASE}/panel-systems-remote-monitoring/cerbo-gx",
+    "multiplus": f"{BASE}/inverters-chargers/multiplus-12v-24v-48v-800va-3kva",
+    "quattro": f"{BASE}/inverters-chargers/quattro",
+    "quattro-ii": f"{BASE}/inverters-chargers/quattro-ii",
+    "phoenix-inverter-smart": f"{BASE}/inverters/phoenix-inverter-smart",
+    "phoenix-inverter-compact": f"{BASE}/inverters/phoenix-inverter-compact",
+    # solar
     "smartsolar-mppt-rs": f"{BASE}/solar-charge-controllers/smartsolar-mppt-rs-450-tr",
     "smartsolar-250-100": f"{BASE}/solar-charge-controllers/smartsolar-250-85-250-100",
-    "phoenix-inverter-smart": f"{BASE}/inverters/phoenix-inverter-smart",
+    "bluesolar-mppt-150-35": f"{BASE}/solar-charge-controllers/bluesolar-mppt-150-35",
+    # gx / monitoring
+    "cerbo-gx": f"{BASE}/panel-systems-remote-monitoring/cerbo-gx",
+    "venus-gx": f"{BASE}/communication-centres/venus-gx",
+    "bmv-712-smart": f"{BASE}/battery-monitors/bmv-712-smart",
+    "smartshunt": f"{BASE}/battery-monitors/smart-battery-shunt",
+    "lynx-smart-bms": f"{BASE}/battery-management-systems/lynx-smart-bms",
+    # dc-dc, chargers, ev
+    "orion-tr-smart": f"{BASE}/dc-dc-converters/orion-tr-smart",
+    "skylla-i": f"{BASE}/chargers/skylla-i",
+    "ev-charging-station": f"{BASE}/ev-charging/ev-charging-station",
 }
 
 TECH_DOCS_PAGE = f"{BASE}/support-and-downloads/technical-information"
@@ -55,6 +72,15 @@ COMMUNITY_QUERIES = [
     "Cerbo GX generator start stop relay",
     "Venus OS node-red large",
     "Modbus TCP victron",
+    # third-party ecosystem
+    "Pylontech CAN bus DVCC",
+    "BYD battery BMS Victron",
+    "Fronius PV inverter Cerbo GX",
+    "EM24 energy meter grid metering",
+    "MQTT Venus OS topics broker",
+    "dbus service names victron",
+    "VRM API portal",
+    "generator assistant wet gear pump",
 ]
 
 REQUEST_DELAY_S = 0.5  # be polite to victronenergy.com and the Discourse API

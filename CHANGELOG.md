@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2026-08-25
+
+### Added
+- Ecosystem-wide corpus coverage: `PRODUCT_PAGES` widened from 6 to 18
+  product families (Quattro/II, MultiPlus, Phoenix compact, Venus GX, BMV-712,
+  SmartShunt, Lynx Smart BMS, BlueSolar MPPT, Orion-Tr Smart, Skylla-i,
+  EV Charging Station; slugs verified against the site sitemap) and
+  `COMMUNITY_QUERIES` extended with third-party ecosystem topics
+  (Pylontech CAN, BYD BMS, Fronius PV, EM24 metering, MQTT topics,
+  dbus services, VRM API).
+- `scripts/export_projects_corpus.py`: exports READMEs + docs of every
+  sibling git repo in the Victron workspace (~33 repos) into
+  `data/projects/corpus.json`; `deploy.sh --with-manuals` uploads and
+  ingests it as a third corpus.
+
+### Fixed
+- Ingestion is now idempotent per source file: before embedding, sources
+  already present in the vector store are skipped. Re-running
+  `--with-manuals` (or any ingest) no longer duplicates the whole corpus.
+
 ## [0.2.3] - 2026-08-24
 
 ### Added
