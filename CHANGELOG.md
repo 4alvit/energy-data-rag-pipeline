@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-08-25
+
+### Fixed
+- Ingestion: batch vector store inserts (5000 texts per `aadd_texts` call) to
+  stay under asyncpg's 32767 statement-argument limit — corpora above ~6553
+  chunks failed only after the full embedding pass (#56).
+- Ingestion: roll back the poisoned session before recording a failed run so
+  the `ingestion_runs` audit row actually commits.
+
 ## [0.2.4] - 2026-08-25
 
 ### Added
