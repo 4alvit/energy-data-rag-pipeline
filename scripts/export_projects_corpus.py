@@ -6,18 +6,24 @@ collects README.md, docs/*.md and CLAUDE.md, splits them into titled sections
 and writes data/projects/corpus.json in the exact shape the forum_json loader
 accepts (ingest via POST /ingest {"source_type": "forum_json", ...}).
 
+With --include-code also emits one record per source file (.py/.go/.ts/.tsx/
+.js/.sh/.yaml/.yml), so the RAG can answer implementation questions with
+citations pointing at real files. Adds ~5 MB / ~1000 files for this workspace.
+
 This repo is skipped - its own docs already ship as docs-corpus/corpus.json.
 
 Stdlib only; safe to run anywhere.
 
 Usage:
     scripts/export_projects_corpus.py [--root ~/victron] [--out data/projects]
+                                      [--include-code]
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -32,6 +38,25 @@ MAX_FILE_BYTES = 200_000  # skip generated/vendored monsters
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 
 DOC_FILES = ("README.md", "CLAUDE.md")
+
+CODE_EXTS = {".py", ".go", ".ts", ".tsx", ".js", ".sh", ".yaml", ".yml"}
+SKIP_DIRS = {
+    ".git",
+    ".venv",
+    "venv",
+    "node_modules",
+    "__pycache__",
+    "dist",
+    "build",
+    "vendor",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".mypy_cache",
+    "htmlcov",
+    "coverage",
+    ".next",
+    ".terraform",
+}
 
 
 def split_sections(text: str) -> list[tuple[str, str]]:
@@ -88,7 +113,38 @@ def load_files(repo: Path) -> list[Path]:
     return [f for f in files if f.is_file() and f.stat().st_size <= MAX_FILE_BYTES]
 
 
-def build_records(root: Path) -> list[dict]:
+def load_code_files(repo: Path) -> list[Path]:
+    """All source/config files worth indexing, junk dirs pruned."""
+    out: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(repo):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        for name in filenames:
+            path = Path(dirpath) / name
+            if path.suffix in CODE_EXTS and path.stat().st_size <= MAX_FILE_BYTES:
+                out.append(path)
+    return sorted(out)
+
+
+def code_record(repo: Path, base: str, path: Path) -> dict:
+    rel = path.relative_to(repo).as_posix()
+    return {
+        "title": f"{repo.name} > {rel}",
+        "body": path.read_text(encoding="utf-8"),
+        "url": f"{base}/{rel}",
+        "author": "project-code",
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "tags": [
+            "project-code",
+            repo.name,
+            path.suffix.lstrip("."),
+            *path.relative_to(repo).parts[:-1],
+        ][:8],
+        "score": 10,
+        "accepted": True,
+    }
+
+
+def build_records(root: Path, include_code: bool = False) -> list[dict]:
     records: list[dict] = []
     repos = sorted(p for p in root.iterdir() if p.is_dir() and p.name != SELF)
     for repo in repos:
@@ -131,8 +187,15 @@ def build_records(root: Path) -> list[dict]:
                     }
                 )
             repo_docs += 1
-        if repo_docs:
-            print(f"{repo.name}: {repo_docs} files")
+        code_count = 0
+        if include_code:
+            for path in load_code_files(repo):
+                records.append(code_record(repo, base, path))
+                code_count += 1
+        summary = f"{repo_docs} docs"
+        if include_code:
+            summary += f", {code_count} code files"
+        print(f"{repo.name}: {summary}")
     return records
 
 
@@ -142,12 +205,17 @@ def main() -> int:
         "--root", type=Path, default=REPO_ROOT.parent, help="directory of sibling git repos"
     )
     parser.add_argument("--out", type=Path, default=OUT_DIR, help="output directory")
+    parser.add_argument(
+        "--include-code",
+        action="store_true",
+        help="also index source files (.py/.go/.ts/.tsx/.js/.sh/.yaml/.yml)",
+    )
     args = parser.parse_args()
     if not args.root.is_dir():
         print(f"error: {args.root} not found", file=sys.stderr)
         return 1
 
-    records = build_records(args.root)
+    records = build_records(args.root, include_code=args.include_code)
     args.out.mkdir(parents=True, exist_ok=True)
     out_path = args.out / "corpus.json"
     out_path.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")

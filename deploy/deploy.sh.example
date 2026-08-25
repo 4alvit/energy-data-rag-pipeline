@@ -190,7 +190,7 @@ upload_victron_content() {
   for dir in manuals community projects; do
     if [ ! -d "$REPO_DIR/data/$dir" ]; then
       case "$dir" in
-        projects) "$REPO_DIR/scripts/export_projects_corpus.py" --out "$REPO_DIR/data/projects" ;;
+        projects) "$REPO_DIR/scripts/export_projects_corpus.py" --out "$REPO_DIR/data/projects" --include-code ;;
         *)        "$REPO_DIR/scripts/fetch_victron_content.py" --out "$REPO_DIR/data" ;;
       esac
     fi
