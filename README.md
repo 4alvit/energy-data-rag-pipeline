@@ -78,12 +78,14 @@ curl -X POST http://localhost:8000/ingest \
 
 ```bash
 python3 scripts/fetch_victron_content.py --out data   # official PDF manuals + community forum export
+python3 scripts/export_projects_corpus.py             # sibling ~/victron repos -> data/projects/corpus.json
 ```
 
 Then ingest `data/manuals` (`source_type: pdf`, `chunk_strategy: technical`) and
-`data/community` (`source_type: forum_json`, one call after the other — concurrent
-ingests race on the DB pool). On a Synology deployment,
-`deploy/deploy.sh --with-manuals` does upload + ingest + wait for you.
+`data/community` / `data/projects` (`source_type: forum_json`, one call after the
+other — concurrent ingests race on the DB pool; re-ingestion skips already-stored
+sources). On a Synology deployment, `deploy/deploy.sh --with-manuals` does
+upload + serialized ingest + wait for you.
 See [docs/corpus-enrichment.md](docs/corpus-enrichment.md).
 
 ### Connect your AI coding agent
