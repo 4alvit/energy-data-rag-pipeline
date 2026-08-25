@@ -19,7 +19,10 @@ RAG (Retrieval-Augmented Generation) pipeline for Victron Energy documentation a
 - **FastAPI Query Endpoint**: RESTful API with source citations
 - **LangChain Retrieval**: LCEL chains with configurable LLM providers
 - **MCP Server**: Plug the knowledge base into Claude Code, opencode, Cursor,
-  Codex CLI, Gemini CLI and any MCP-capable agent ([docs](docs/mcp-integration.md))
+  Codex CLI, Gemini CLI and any MCP-capable agent — zero local setup over
+  HTTP (`"energy-rag": {"type": "http", "url": "http://synology:8800/mcp"}`
+  in `.mcp.json`), or run the stdio adapter from a repo checkout for
+  development ([docs](docs/mcp-integration.md))
 - **Free Claude Code**: run agents (and this API's answer generation) through
   [FCC's](https://github.com/Alishahryar1/free-claude-code) free provider
   proxy — no paid Anthropic plan or local Ollama required
