@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-08-24
+
+### Added
+- Real Victron content pipeline (the pieces v0.2.2 announced but failed to
+  commit): `scripts/fetch_victron_content.py` (scrapes official English PDF
+  manuals + community Discourse threads), `docs/corpus-enrichment.md`
+  (from-zero runbook, validated end to end on Synology: 27 manuals → 3117
+  chunks, community threads → 209 chunks), `deploy/deploy.sh --with-manuals`,
+  README section.
+
+### Fixed
+- `deploy.sh --with-manuals` now serializes ingestion runs and waits for each
+  run to complete before posting the next. Concurrent `/ingest` calls race on
+  the DB connection pool; the losing run dies with an asyncpg connect timeout
+  before processing anything. Timeout configurable via `INGEST_TIMEOUT_S`
+  (default 3h per run — embedding on NAS CPU is slow).
+
 ## [0.2.2] - 2026-08-24
 
 ### Added

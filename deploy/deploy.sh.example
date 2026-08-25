@@ -9,6 +9,8 @@
 # Usage:
 #   deploy/deploy.sh                  # sync config + pull images + restart stack
 #   deploy/deploy.sh --with-docs      # also upload & ingest the RAG docs corpus
+#   deploy/deploy.sh --with-manuals   # also upload & ingest Victron manuals + community corpus
+#                                      (run scripts/fetch_victron_content.py first, or let it fetch)
 #   deploy/deploy.sh status           # show container status
 #   deploy/deploy.sh logs [service]   # tail logs (api|mcp|postgres)
 #   deploy/deploy.sh down             # stop the stack
@@ -29,6 +31,7 @@ FCC_PORT="${FCC_PORT:-8082}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-changeme}"              # CHANGE ME in deploy.sh
 OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://192.168.1.50:11434}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
+INGEST_TIMEOUT_S="${INGEST_TIMEOUT_S:-10800}"   # max wait per ingestion run (NAS CPU is slow)
 
 SSH_TARGET="${SYNOLOGY_HOST}"
 [ -n "$SYNOLOGY_USER" ] && SSH_TARGET="${SYNOLOGY_USER}@${SYNOLOGY_HOST}"
@@ -132,6 +135,38 @@ smoke_test() {
     || log "Query returned an error (empty index is OK right after first deploy)."
 }
 
+# Ingestion runs must be serialized: concurrent /ingest calls race on the DB
+# connection pool and the losing run dies with an asyncpg connect timeout.
+trigger_ingest() {
+  local payload="$1" label="$2" resp run_id
+  resp=$(remote "curl -fsS -m 60 -X POST http://localhost:${API_PORT}/ingest \
+    -H 'Content-Type: application/json' \
+    -d '$payload'") || die "$label ingestion request failed."
+  printf '%s\n' "$resp"
+  run_id=$(printf '%s' "$resp" | sed -n 's/.*"run_id":"\([^"]*\)".*/\1/p')
+  [ -n "$run_id" ] || die "$label ingestion returned no run_id."
+  wait_ingest "$run_id" "$label"
+}
+
+wait_ingest() {
+  local run_id="$1" label="$2"
+  log "Waiting for $label ingestion to finish (run $run_id)."
+  log "Embedding runs on NAS CPU - this can take an hour or more."
+  if ! remote "cd '$REMOTE_DIR' && i=0
+    while [ \$i -lt ${INGEST_TIMEOUT_S} ]; do
+      if sudo env $REMOTE_SUDO_ENV $COMPOSE -f docker-compose.prod.yml logs api --tail 20 2>&1 |
+           grep -qE 'Ingestion completed: run_id=$run_id|Ingestion failed for run $run_id'; then
+        exit 0
+      fi
+      sleep 30
+      i=\$((i+30))
+    done
+    exit 1"; then
+    die "$label ingestion did not finish within ${INGEST_TIMEOUT_S}s. Check: deploy/deploy.sh logs api"
+  fi
+  log "$label ingestion finished."
+}
+
 upload_docs_corpus() {
   log "Uploading RAG docs corpus..."
   if [ ! -d "$REPO_DIR/docs-corpus" ]; then
@@ -150,6 +185,23 @@ upload_docs_corpus() {
   fi
 }
 
+upload_victron_content() {
+  log "Uploading Victron manuals + community corpus..."
+  for dir in manuals community; do
+    if [ ! -d "$REPO_DIR/data/$dir" ]; then
+      log "No data/$dir/ - fetching it now (scripts/fetch_victron_content.py)."
+      "$REPO_DIR/scripts/fetch_victron_content.py" --out "$REPO_DIR/data"
+    fi
+  done
+  rsync -az --delete "$REPO_DIR/data/manuals/"   "$SSH_TARGET:$DATA_ROOT/data/manuals/"
+  rsync -az --delete "$REPO_DIR/data/community/" "$SSH_TARGET:$DATA_ROOT/data/community/"
+  log "Ingesting /data/manuals (pdf, technical chunks) inside api container..."
+  trigger_ingest '{"source_type":"pdf","paths":["/data/manuals"],"chunk_strategy":"technical"}' Manuals
+  log "Ingesting /data/community (forum_json) inside api container..."
+  trigger_ingest '{"source_type":"forum_json","paths":["/data/community"],"chunk_strategy":"recursive"}' Community
+  log "Corpus ingestion complete. Chunk counts: deploy/deploy.sh logs api | grep Stored"
+}
+
 case "${1:-deploy}" in
   deploy)
     preflight
@@ -160,13 +212,18 @@ case "${1:-deploy}" in
     deploy_stack
     upload_docs_corpus
     ;;
+  --with-manuals)
+    preflight
+    deploy_stack
+    upload_victron_content
+    ;;
   status)  compose_cmd "ps" ;;
   logs)    compose_cmd "logs -f --tail=100 ${2:-}" ;;
   restart) compose_cmd "restart" ;;
   pull)    compose_cmd "pull" ;;
   down)    compose_cmd "down" ;;
   *)
-    echo "Usage: $0 [deploy|--with-docs|status|logs [svc]|restart|pull|down]"
+    echo "Usage: $0 [deploy|--with-docs|--with-manuals|status|logs [svc]|restart|pull|down]"
     exit 1
     ;;
 esac
