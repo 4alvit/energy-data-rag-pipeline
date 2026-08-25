@@ -12,6 +12,7 @@ packaged as multi-arch Docker images (linux/amd64 + linux/arm64).
 | [api-reference.md](api-reference.md) | REST endpoints, request/response schemas |
 | [configuration.md](configuration.md) | Every environment variable and setting |
 | [ingestion-and-chunking.md](ingestion-and-chunking.md) | Loaders, chunking strategies, metadata schema |
+| [corpus-enrichment.md](corpus-enrichment.md) | Fetching real Victron manuals + community content into the corpus |
 | [deployment-synology.md](deployment-synology.md) | Synology/NAS deployment via `deploy/deploy.sh` |
 | [mcp-integration.md](mcp-integration.md) | Connecting AI coding agents (Claude Code, opencode, Cursor, ...) via MCP |
 | [release-and-images.md](release-and-images.md) | Versioning policy, multi-arch images, release runbook |

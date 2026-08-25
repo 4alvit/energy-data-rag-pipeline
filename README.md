@@ -74,6 +74,18 @@ curl -X POST http://localhost:8000/ingest \
 
 (`./data` is mounted at `/data` inside the api container.)
 
+### Feed real Victron content to the RAG
+
+```bash
+python3 scripts/fetch_victron_content.py --out data   # official PDF manuals + community forum export
+```
+
+Then ingest `data/manuals` (`source_type: pdf`, `chunk_strategy: technical`) and
+`data/community` (`source_type: forum_json`, one call after the other — concurrent
+ingests race on the DB pool). On a Synology deployment,
+`deploy/deploy.sh --with-manuals` does upload + ingest + wait for you.
+See [docs/corpus-enrichment.md](docs/corpus-enrichment.md).
+
 ### Connect your AI coding agent
 
 ```jsonc
