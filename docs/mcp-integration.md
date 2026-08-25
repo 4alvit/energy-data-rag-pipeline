@@ -33,7 +33,7 @@ The docker stack must be running somewhere reachable:
 ```bash
 docker compose up -d          # workstation
 # or on the NAS after deploy.sh:
-curl http://synology:8000/health
+curl http://synology:8010/health
 ```
 
 For stdio clients the server is spawned locally and needs Python + this repo
@@ -50,7 +50,7 @@ uv sync --extra mcp           # creates .venv with the mcp extra
 
 All examples assume the repo at `/path/to/energy-data-rag-pipeline` — replace
 with your absolute path, or point `RAG_API_URL` at the Synology instance
-(`http://synology:8000`). For remote-only usage prefer the HTTP variant shown
+(`http://synology:8010` — `API_PORT` from the NAS `.env`). For remote-only usage prefer the HTTP variant shown
 at the end.
 
 ### Claude Code
