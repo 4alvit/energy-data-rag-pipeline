@@ -9,7 +9,7 @@
       "command": "uv",
       "args": ["--directory", ".", "run", "energy-rag-mcp"],
       "env": {
-        "RAG_API_URL": "http://localhost:8000"
+        "RAG_API_URL": "http://synology:8010"
       }
     }
   }
