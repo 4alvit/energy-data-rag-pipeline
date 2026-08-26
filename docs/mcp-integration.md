@@ -13,8 +13,14 @@ default `http://localhost:8000`) — start the docker stack first.
 
 | Transport | Command | Typical consumer |
 |---|---|---|
-| `stdio` *(default)* | `energy-rag-mcp` | Local agents: Claude Code, opencode, Cursor, ... |
-| `streamable-http` | `energy-rag-mcp --transport streamable-http --host 0.0.0.0 --port 8800` | Remote/shared agents; exposed by compose on port 8800 at `/mcp` |
+| `streamable-http` *(recommended)* | deployed by compose on port 8800 at `/mcp` | Any client with network access to the deployment — zero local setup |
+| `stdio` *(developer mode)* | `energy-rag-mcp` | Testing unreleased adapter changes from a repo checkout |
+
+Both transports expose identical tools against the same backend. HTTP is
+preferred for consumption: nothing to install on the client machine, no local
+dependency venv (the adapter itself is stdlib-only, but a repo checkout drags
+in the full package deps), and its version always matches the deployed stack.
+Use stdio when developing the MCP server itself.
 
 ### Tools
 
@@ -26,6 +32,26 @@ default `http://localhost:8000`) — start the docker stack first.
 | `rag_health()` | API + database status |
 | `rag_stats()` | Embedding/LLM/retrieval configuration |
 
+## Quick connect (HTTP — recommended)
+
+Point your client at the deployed server. For Claude Code, add to `.mcp.json`
+(project) or `~/.claude.json` (global):
+
+```json
+{
+  "mcpServers": {
+    "energy-rag": {
+      "type": "http",
+      "url": "http://synology:8800/mcp"
+    }
+  }
+}
+```
+
+Replace `synology` with the NAS hostname/IP reachable from your machine
+(`API_PORT`/`MCP_PORT` come from the deployment `.env`; defaults 8010/8800).
+No Python, uv or repo checkout required on the client.
+
 ## Prerequisite
 
 The docker stack must be running somewhere reachable:
@@ -33,15 +59,32 @@ The docker stack must be running somewhere reachable:
 ```bash
 docker compose up -d          # workstation
 # or on the NAS after deploy.sh:
-curl http://synology:8000/health
+curl http://synology:8010/health
 ```
 
-For stdio clients the server is spawned locally and needs Python + this repo
-(or the published package). Install once:
+**Developer mode (stdio)** spawns the server locally and needs Python + this
+repo checkout. Install once:
 
 ```bash
 cd /path/to/energy-data-rag-pipeline
 uv sync --extra mcp           # creates .venv with the mcp extra
+```
+
+Then configure the client with:
+
+```json
+{
+  "mcpServers": {
+    "energy-rag": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "/path/to/energy-data-rag-pipeline", "run", "energy-rag-mcp"],
+      "env": {
+        "RAG_API_URL": "http://synology:8010"
+      }
+    }
+  }
+}
 ```
 
 ---
@@ -50,7 +93,7 @@ uv sync --extra mcp           # creates .venv with the mcp extra
 
 All examples assume the repo at `/path/to/energy-data-rag-pipeline` — replace
 with your absolute path, or point `RAG_API_URL` at the Synology instance
-(`http://synology:8000`). For remote-only usage prefer the HTTP variant shown
+(`http://synology:8010` — `API_PORT` from the NAS `.env`). For remote-only usage prefer the HTTP variant shown
 at the end.
 
 ### Claude Code
