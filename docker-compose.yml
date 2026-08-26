@@ -44,14 +44,15 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
+      # Raw-socket HTTP probe — see deploy/docker-compose.prod.yml for why.
       test:
         [
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+          "import socket; s=socket.socket(); s.settimeout(3); s.connect(('localhost',8000)); s.sendall(b'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n'); d=s.recv(64); s.close(); raise SystemExit(0 if b' 200 ' in d else 1)",
         ]
-      interval: 15s
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 60s

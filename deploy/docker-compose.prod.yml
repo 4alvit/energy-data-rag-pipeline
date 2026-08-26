@@ -48,14 +48,17 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     healthcheck:
+      # Raw-socket HTTP probe: urllib's import chain costs ~1.3s of CPU per
+      # probe on NAS ARM (~13% of a core at a 10-15s interval). A bare socket
+      # does the same GET /health (incl. DB ping) in ~0.35s.
       test:
         [
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+          "import socket; s=socket.socket(); s.settimeout(3); s.connect(('localhost',8000)); s.sendall(b'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n'); d=s.recv(64); s.close(); raise SystemExit(0 if b' 200 ' in d else 1)",
         ]
-      interval: 15s
+      interval: 30s
       timeout: 10s
       retries: 5
       # First boot downloads the embedding models (~100 MB); slow NAS disks
