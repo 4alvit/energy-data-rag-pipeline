@@ -19,6 +19,7 @@ spec:
       labels:
         app: fcc
     spec:
+      enableServiceLinks: false
       imagePullSecrets:
         - name: ghcr-pull
       containers:

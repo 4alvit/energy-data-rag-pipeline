@@ -15,6 +15,7 @@ spec:
       labels:
         app: mcp
     spec:
+      enableServiceLinks: false
       imagePullSecrets:
         - name: ghcr-pull
       containers:
