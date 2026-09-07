@@ -1,0 +1,72 @@
+name: Deploy k3s
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag (e.g. v0.2.5 or latest)
+        required: true
+        default: latest
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Apply energy-rag to k3s
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@911ae5630d033486b4382f7ce3a3375d2b2f7383 # v4
+        with:
+          version: "v1.31.4"
+
+      - name: Write kubeconfig
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          # Secret may be raw YAML or base64 — detect
+          if printf '%s' "$KUBECONFIG_B64" | head -c 20 | grep -q 'apiVersion'; then
+            printf '%s\n' "$KUBECONFIG_B64" > "$HOME/.kube/config"
+          else
+            printf '%s' "$KUBECONFIG_B64" | base64 --decode > "$HOME/.kube/config"
+          fi
+          chmod 600 "$HOME/.kube/config"
+          unset KUBECONFIG_B64
+
+      - name: Ensure namespace + secrets
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+        run: |
+          set -euo pipefail
+          kubectl get ns energy-rag >/dev/null 2>&1 || kubectl create namespace energy-rag
+          # Never echo secret values
+          kubectl -n energy-rag create secret generic energy-rag-secrets \
+            --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            --from-literal=DATABASE_URL="postgresql+asyncpg://rag:${POSTGRES_PASSWORD}@postgres:5432/energy_rag" \
+            --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
+            --from-literal=ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
+            --from-literal=NVIDIA_NIM_API_KEY="${NVIDIA_NIM_API_KEY:-}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          echo "Secret keys present:"
+          kubectl -n energy-rag get secret energy-rag-secrets -o jsonpath='{.data}' \
+            | python3 -c "import sys,json; print(' '.join(json.load(sys.stdin).keys()))"
+
+      - name: Apply + rollout
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          chmod +x deploy/k3s/deploy.sh
+          TAG="$TAG" ./deploy/k3s/deploy.sh
