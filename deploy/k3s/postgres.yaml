@@ -15,6 +15,7 @@ spec:
       labels:
         app: postgres
     spec:
+      enableServiceLinks: false
       containers:
         - name: postgres
           image: pgvector/pgvector:pg16
