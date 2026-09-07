@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: energy-rag
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres-init-configmap.yaml
+  - postgres-pvc.yaml
+  - data-pvc.yaml
+  - postgres.yaml
+  - api.yaml
+  - mcp.yaml
+  - fcc.yaml
+images:
+  - name: ghcr.io/4alvit/energy-data-rag-pipeline
+    newTag: latest
+  - name: ghcr.io/4alvit/free-claude-code
+    newTag: latest

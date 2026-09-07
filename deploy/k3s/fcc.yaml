@@ -1,0 +1,102 @@
+# FCC as a normal Deployment (no hostNetwork).
+# Admin UI is loopback-guarded — use port-forward from a trusted host:
+#   kubectl -n energy-rag port-forward svc/fcc 8082:8082
+# then open http://127.0.0.1:8082/admin
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fcc
+  namespace: energy-rag
+  labels:
+    app: fcc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fcc
+  template:
+    metadata:
+      labels:
+        app: fcc
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: fcc
+          image: ghcr.io/4alvit/free-claude-code:latest
+          ports:
+            - containerPort: 8082
+              name: http
+          env:
+            - name: HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: energy-rag-config
+                  key: FCC_HOST
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: energy-rag-config
+                  key: FCC_PORT
+            - name: FCC_OPEN_BROWSER
+              valueFrom:
+                configMapKeyRef:
+                  name: energy-rag-config
+                  key: FCC_OPEN_BROWSER
+            - name: MESSAGING_PLATFORM
+              valueFrom:
+                configMapKeyRef:
+                  name: energy-rag-config
+                  key: MESSAGING_PLATFORM
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: energy-rag-config
+                  key: LOG_LEVEL
+            - name: NVIDIA_NIM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: energy-rag-secrets
+                  key: NVIDIA_NIM_API_KEY
+                  optional: true
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: energy-rag-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+          volumeMounts:
+            - name: fcc-config
+              mountPath: /home/fcc/.fcc
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: fcc-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fcc
+  namespace: energy-rag
+spec:
+  selector:
+    app: fcc
+  ports:
+    - port: 8082
+      targetPort: 8082
+      name: http
