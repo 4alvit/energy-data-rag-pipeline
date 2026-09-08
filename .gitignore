@@ -56,3 +56,6 @@ deploy/.env
 deploy/fcc.env
 TODO.md
 *.backup
+
+# Local Ingress/TLS overrides (never commit)
+deploy/k3s/ingress.env
