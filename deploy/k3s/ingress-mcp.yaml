@@ -1,3 +1,5 @@
+# Values substituted by deploy.sh:
+#   MCP_INGRESS_HOST (FQDN for the MCP Ingress)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -9,10 +11,10 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - energy-rag.k3s.example.com
+        - "${MCP_INGRESS_HOST}"
       secretName: energy-rag-k3s-tls
   rules:
-    - host: energy-rag.k3s.example.com
+    - host: "${MCP_INGRESS_HOST}"
       http:
         paths:
           - path: /mcp

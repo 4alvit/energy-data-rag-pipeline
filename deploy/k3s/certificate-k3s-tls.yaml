@@ -1,3 +1,5 @@
+# Values substituted by deploy.sh:
+#   K3S_DNS_SUFFIX (e.g. k3s.example.com) → dnsNames: ["*.${K3S_DNS_SUFFIX}"]
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -9,4 +11,4 @@ spec:
     name: letsencrypt-cloudflare
     kind: ClusterIssuer
   dnsNames:
-    - "*.k3s.example.com"
+    - "*.${K3S_DNS_SUFFIX}"
