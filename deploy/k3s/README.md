@@ -69,3 +69,34 @@ kubectl -n energy-rag port-forward svc/fcc 8082:8082
 | api | 8000 |
 | mcp | 8800 |
 | fcc | 8082 |
+
+## Ingress / TLS
+
+Public (LAN/ZT) MCP endpoint:
+
+- Host: `energy-rag.k3s.example.com`
+- Path: `/mcp` → Service `mcp:8800`
+- TLS: Certificate `k3s-wildcard-tls` (wildcard `*.k3s.example.com`) via ClusterIssuer `letsencrypt-cloudflare` (DNS-01)
+
+One-time cluster setup (not in the namespaced kustomization):
+
+```bash
+# cert-manager (if missing)
+sudo k3s kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.1/cert-manager.yaml
+
+# Cloudflare API token Secret in cert-manager ns (Zone.Read + Zone.DNS Edit on example.com)
+# Prefer personal token (e.g. shell env CLOUDFLARE_DNS_API_TOKEN), NOT a work/Roku-scoped CLOUDFLARE_API_TOKEN
+sudo k3s kubectl -n cert-manager create secret generic cloudflare-api-token \
+  --from-literal=api-token="$CLOUDFLARE_DNS_API_TOKEN"
+
+sudo k3s kubectl apply -f deploy/k3s/clusterissuer-letsencrypt-cloudflare.yaml
+```
+
+Then apply the energy-rag kustomization (includes Certificate + Ingress):
+
+```bash
+sudo k3s kubectl apply -k deploy/k3s/
+```
+
+Traefik Service in `kube-system` should include `externalIPs: [192.168.151.21]` so ports 80/443 are reachable on the ZeroTier node IP (Mac cannot use the MetalLB VIP 10.0.0.58).
+
