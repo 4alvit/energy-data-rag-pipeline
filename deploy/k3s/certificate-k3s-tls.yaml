@@ -1,0 +1,14 @@
+# Values substituted by deploy.sh:
+#   K3S_DNS_SUFFIX (e.g. k3s.example.com) → dnsNames: ["*.${K3S_DNS_SUFFIX}"]
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: k3s-wildcard-tls
+  namespace: energy-rag
+spec:
+  secretName: energy-rag-k3s-tls
+  issuerRef:
+    name: letsencrypt-cloudflare
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.${K3S_DNS_SUFFIX}"

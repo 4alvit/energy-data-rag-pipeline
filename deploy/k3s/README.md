@@ -4,7 +4,7 @@ Lean kustomize deploy for namespace `energy-rag` (postgres + api + mcp + fcc).
 
 ## Prerequisites
 
-- kubectl pointed at the k3s cluster (server `https://192.168.151.21:6443`)
+- kubectl pointed at the k3s cluster (server URL for your k3s API)
 - StorageClass `local-path`
 - Secret `energy-rag-secrets` (see below)
 - Optional: `ghcr-pull` imagePullSecret if GHCR packages are private
@@ -69,3 +69,49 @@ kubectl -n energy-rag port-forward svc/fcc 8082:8082
 | api | 8000 |
 | mcp | 8800 |
 | fcc | 8082 |
+
+## Ingress / TLS
+
+MCP Ingress host and ACME identity are **not** committed. Set GitHub Actions
+Variables (or local `deploy/k3s/ingress.env` — gitignored; see
+`ingress.env.example`):
+
+| Variable | Purpose |
+|----------|---------|
+| `ACME_EMAIL` | Let's Encrypt account email (ClusterIssuer) |
+| `DNS_ZONE` | Public DNS zone for Cloudflare DNS-01 |
+| `K3S_DNS_SUFFIX` | Suffix for wildcard cert (`*.${K3S_DNS_SUFFIX}`) |
+| `MCP_INGRESS_HOST` | Ingress host for MCP |
+
+Templates in git use `${…}` placeholders; `deploy.sh` substitutes them before
+`kubectl apply`.
+
+One-time cluster setup (not in the namespaced kustomization):
+
+```bash
+# cert-manager (if missing)
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.21.1/cert-manager.yaml
+
+# Cloudflare API token Secret in cert-manager ns
+# (Zone.DNS Edit on your public zone — use a token scoped to that zone only)
+kubectl -n cert-manager create secret generic cloudflare-api-token \
+  --from-literal=api-token="$CLOUDFLARE_DNS_API_TOKEN"
+
+# Render + apply (requires the four variables above)
+source deploy/k3s/ingress.env
+./deploy/k3s/deploy.sh
+```
+
+Also apply the ClusterIssuer after rendering:
+
+```bash
+# deploy.sh applies the kustomization (includes Certificate + Ingress).
+# ClusterIssuer is cluster-scoped; apply the rendered file once:
+sed -e "s|\${ACME_EMAIL}|$ACME_EMAIL|g" -e "s|\${DNS_ZONE}|$DNS_ZONE|g" \
+  deploy/k3s/clusterissuer-letsencrypt-cloudflare.yaml | kubectl apply -f -
+```
+
+Traefik should expose `:80`/`:443` on the node address your LAN/VPN clients use
+(for example via `externalIPs` on the Traefik Service). Do **not** open world
+`0.0.0.0/0:443` on the cloud security list toward that VIP.
+

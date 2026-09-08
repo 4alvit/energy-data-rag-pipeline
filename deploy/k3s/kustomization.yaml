@@ -11,6 +11,8 @@ resources:
   - api.yaml
   - mcp.yaml
   - fcc.yaml
+  - certificate-k3s-tls.yaml
+  - ingress-mcp.yaml
 images:
   - name: ghcr.io/4alvit/energy-data-rag-pipeline
     newTag: latest

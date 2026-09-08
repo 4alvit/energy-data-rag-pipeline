@@ -1,0 +1,26 @@
+# Values substituted by deploy.sh:
+#   MCP_INGRESS_HOST (FQDN for the MCP Ingress)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcp
+  namespace: energy-rag
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - "${MCP_INGRESS_HOST}"
+      secretName: energy-rag-k3s-tls
+  rules:
+    - host: "${MCP_INGRESS_HOST}"
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp
+                port:
+                  number: 8800
