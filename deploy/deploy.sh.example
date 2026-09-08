@@ -29,7 +29,7 @@ API_PORT="${API_PORT:-8000}"
 MCP_PORT="${MCP_PORT:-8800}"
 FCC_PORT="${FCC_PORT:-8082}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-changeme}"              # CHANGE ME in deploy.sh
-OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://192.168.1.50:11434}"
+OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
 INGEST_TIMEOUT_S="${INGEST_TIMEOUT_S:-10800}"   # max wait per ingestion run (NAS CPU is slow)
 
