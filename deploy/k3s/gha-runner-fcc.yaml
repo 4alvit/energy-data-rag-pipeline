@@ -1,0 +1,61 @@
+# Repo-scoped GitHub Actions runner for 4alvit/iot-project-builder-profile
+# labels: self-hosted,fcc,h7 — pinned to h7 (arm64) next to energy-rag/fcc.
+# Secret (not in git): kubectl -n energy-rag create secret generic gha-runner-fcc \
+#   --from-literal=ACCESS_TOKEN=ghp_... --dry-run=client -o yaml | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gha-runner-fcc
+  namespace: energy-rag
+  labels:
+    app: gha-runner-fcc
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gha-runner-fcc
+  template:
+    metadata:
+      labels:
+        app: gha-runner-fcc
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: h7
+      containers:
+        - name: runner
+          # multi-arch; k3s on h7 pulls linux/arm64
+          image: myoung34/github-runner:ubuntu-noble
+          imagePullPolicy: Always
+          env:
+            - name: REPO_URL
+              value: https://github.com/4alvit/iot-project-builder-profile
+            - name: RUNNER_NAME
+              value: h7-fcc-k3s
+            - name: RUNNER_SCOPE
+              value: repo
+            - name: LABELS
+              value: self-hosted,fcc,h7
+            - name: DISABLE_AUTO_UPDATE
+              value: "true"
+            - name: RUNNER_WORKDIR
+              value: /runner/_work
+            - name: ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gha-runner-fcc
+                  key: ACCESS_TOKEN
+          volumeMounts:
+            - name: work
+              mountPath: /runner/_work
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+      volumes:
+        - name: work
+          emptyDir: {}

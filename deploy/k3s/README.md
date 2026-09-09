@@ -115,3 +115,15 @@ Traefik should expose `:80`/`:443` on the node address your LAN/VPN clients use
 (for example via `externalIPs` on the Traefik Service). Do **not** open world
 `0.0.0.0/0:443` on the cloud security list toward that VIP.
 
+
+## GitHub Actions runner (`gha-runner-fcc`)
+
+Repo runner for `iot-project-builder-profile` (`runs-on: [self-hosted, fcc]`).
+Talks to in-cluster FCC at `http://fcc.energy-rag.svc.cluster.local:8082`.
+
+```bash
+kubectl -n energy-rag create secret generic gha-runner-fcc \
+  --from-literal=ACCESS_TOKEN=ghp_... \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f gha-runner-fcc.yaml
+```

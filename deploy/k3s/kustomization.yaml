@@ -11,6 +11,7 @@ resources:
   - api.yaml
   - mcp.yaml
   - fcc.yaml
+  - gha-runner-fcc.yaml
   - certificate-k3s-tls.yaml
   - ingress-mcp.yaml
 images:
