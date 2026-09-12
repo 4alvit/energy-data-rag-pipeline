@@ -21,5 +21,6 @@
   "container_assets": {
     "energy-data-rag-pipeline-container.oci.tar": "ghcr.io/4alvit/energy-data-rag-pipeline",
     "energy-rag-fcc-container.oci.tar": "ghcr.io/4alvit/free-claude-code"
-  }
+  },
+  "visibility": "public"
 }
