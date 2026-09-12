@@ -161,7 +161,7 @@ graph LR
     C --> D[pgvector\nPostgreSQL 16]
     D --> E[Retrieval\nLangChain + LLM]
     E --> F[Answer + Citations]
-    
+
     style D fill:#336791,color:#fff
     style E fill:#f04e23,color:#fff
 ```
@@ -209,6 +209,8 @@ Query the RAG system.
 
 ### `POST /ingest`
 Trigger document ingestion.
+
+The `ingestion_runs` audit history records a run before document processing begins. If loading, embedding, or storage fails, the run retains a `failed` status, completion time, and error message after the processing transaction rolls back. The original error still propagates to CLI callers and is logged for background API ingestion.
 
 **Request:**
 ```json

@@ -85,10 +85,6 @@ async def run_ingestion(
     await init_database()
     await ensure_vector_extension()
 
-    chunker = create_chunker(chunk_strategy)
-    pipeline = create_ingestion_pipeline(chunker)
-    vector_store = get_vector_store()
-
     docs_processed = 0
     chunks_created = 0
 
@@ -100,7 +96,16 @@ async def run_ingestion(
             source_path=", ".join(str(p) for p in paths),
         )
 
-        try:
+        # Commit the audit row before starting ingestion. Its identity must
+        # survive a rollback of the document-processing transaction.
+        run_id = run.id
+
+    try:
+        chunker = create_chunker(chunk_strategy)
+        pipeline = create_ingestion_pipeline(chunker)
+        vector_store = get_vector_store()
+        async with db.session() as session:
+            repo = DocumentRepository(session)
             stored_sources = await _stored_sources(session)
             for path in paths:
                 if not path.exists():
@@ -132,21 +137,24 @@ async def run_ingestion(
                 logger.info("Stored %d chunks from %s", path_chunks, path)
 
             await repo.complete_ingestion_run(
-                run_id=run.id,
+                run_id=run_id,
                 status="completed",
                 documents_processed=docs_processed,
                 chunks_created=chunks_created,
             )
-        except Exception as exc:
-            logger.exception("Ingestion failed")
-            # The failing statement poisons the session's transaction; roll
-            # back so recording the failed run gets a clean transaction.
-            await session.rollback()
-            await repo.complete_ingestion_run(
-                run_id=run.id,
-                status="failed",
-                error_message=str(exc),
-            )
-            raise
+    except Exception as exc:
+        logger.exception("Ingestion failed")
+        # The processing session has already rolled back. Record failure in
+        # an independent transaction so re-raising cannot undo the audit.
+        try:
+            async with db.session() as failure_session:
+                await DocumentRepository(failure_session).complete_ingestion_run(
+                    run_id=run_id,
+                    status="failed",
+                    error_message=str(exc),
+                )
+        except Exception:
+            logger.exception("Could not persist failed ingestion run %s", run_id)
+        raise
 
     return docs_processed, chunks_created
