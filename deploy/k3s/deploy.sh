@@ -4,11 +4,13 @@
 #   export KUBECONFIG=...
 #   # TLS/Ingress (required when applying ClusterIssuer/Certificate/Ingress):
 #   source deploy/k3s/ingress.env   # or export ACME_EMAIL DNS_ZONE K3S_DNS_SUFFIX MCP_INGRESS_HOST
-#   TAG=v0.2.5 ./deploy/k3s/deploy.sh
+#   TAG=0.2.5 VERIFIED_IMAGES_FILE=/tmp/verified-images.json ./deploy/k3s/deploy.sh
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-TAG="${TAG:-latest}"
+TAG="${TAG:?Set the approved stable X.Y.Z version}"
+[[ "$TAG" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "Invalid stable version" >&2; exit 1; }
+: "${VERIFIED_IMAGES_FILE:?Run scripts/verified_images.py for this stable release first}"
 KUBECTL="${KUBECTL:-kubectl}"
 
 if [[ -f "${DIR}/ingress.env" ]]; then
@@ -52,10 +54,12 @@ if need_tls_vars; then
   render_tls "${TMP}"
   echo "Applying kustomize with TLS/Ingress rendered from env (TAG=${TAG})..."
 else
-  echo "WARN: ACME_EMAIL/DNS_ZONE/K3S_DNS_SUFFIX/MCP_INGRESS_HOST unset — applying without substituting placeholders."
-  echo "      Set them (or source deploy/k3s/ingress.env) before ClusterIssuer/Certificate/Ingress can work."
+  echo "ACME_EMAIL/DNS_ZONE/K3S_DNS_SUFFIX/MCP_INGRESS_HOST are required before deployment" >&2
+  exit 1
 fi
 
+# Set approved digests in the rendered configuration BEFORE the first apply.
+python3 "${DIR}/../../scripts/pin-deployment-images.py" "$VERIFIED_IMAGES_FILE" "${TMP}/kustomization.yaml" "$TAG"
 "${KUBECTL}" apply -k "${TMP}"
 
 if need_tls_vars; then
@@ -63,14 +67,7 @@ if need_tls_vars; then
   "${KUBECTL}" apply -f "${TMP}/clusterissuer-letsencrypt-cloudflare.yaml"
 fi
 
-"${KUBECTL}" -n energy-rag set image deployment/api \
-  "api=ghcr.io/4alvit/energy-data-rag-pipeline:${TAG}"
-"${KUBECTL}" -n energy-rag set image deployment/mcp \
-  "mcp=ghcr.io/4alvit/energy-data-rag-pipeline:${TAG}"
-"${KUBECTL}" -n energy-rag set image deployment/fcc \
-  "fcc=ghcr.io/4alvit/free-claude-code:${TAG}"
-
-"${KUBECTL}" -n energy-rag rollout restart deployment/api deployment/mcp deployment/fcc
-"${KUBECTL}" -n energy-rag rollout status deployment/postgres --timeout=180s || true
-"${KUBECTL}" -n energy-rag rollout status deployment/api --timeout=600s || true
+for deployment in postgres api mcp fcc; do
+  "${KUBECTL}" -n energy-rag rollout status "deployment/$deployment" --timeout=600s
+done
 "${KUBECTL}" -n energy-rag get pods -o wide

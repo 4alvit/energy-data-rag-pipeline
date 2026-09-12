@@ -1,6 +1,7 @@
 """Test configuration and fixtures."""
 
 import asyncio
+import os
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -10,7 +11,9 @@ from energy_rag.config import Settings
 from energy_rag.storage.models import Base
 
 # Test database URL (uses test database)
-TEST_DATABASE_URL = "postgresql+asyncpg://rag:testpass@localhost:5432/energy_rag_test"
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql+asyncpg://rag:testpass@localhost:5432/energy_rag_test"
+)
 
 
 @pytest.fixture(scope="session")

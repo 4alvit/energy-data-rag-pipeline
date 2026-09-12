@@ -1,0 +1,22 @@
+{
+  "required": [
+    "src",
+    "pyproject.toml",
+    "version",
+    "uv.lock",
+    "Dockerfile",
+    "deploy/fcc/Dockerfile"
+  ],
+  "containers": {
+    "energy-data-rag-pipeline-container.oci.tar": {
+      "context": ".",
+      "dockerfile": "Dockerfile",
+      "platforms": "linux/amd64,linux/arm64"
+    },
+    "energy-rag-fcc-container.oci.tar": {
+      "context": "deploy/fcc",
+      "dockerfile": "deploy/fcc/Dockerfile",
+      "platforms": "linux/amd64,linux/arm64"
+    }
+  }
+}

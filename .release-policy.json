@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "repository": "4alvit/energy-data-rag-pipeline",
+  "mode": "release",
+  "default_branch": "main",
+  "validation_workflows": [
+    "ci.yml",
+    "codeql.yml",
+    "release-security.yml"
+  ],
+  "artifact_pattern": "release-assets*",
+  "version_file": "version",
+  "local_checks": [
+    "bash scripts/ci.sh",
+    "bash scripts/ci.sh security"
+  ],
+  "notes": [
+    "Integration tests require PostgreSQL with pgvector: local ci.sh provisions a disposable container; CI provisions a matching energy_rag_test service.",
+    "FCC image preserves the pinned upstream source commit; its transitive dependencies remain upstream-managed. Both OCI images preserve amd64 and arm64 builds."
+  ],
+  "container_assets": {
+    "energy-data-rag-pipeline-container.oci.tar": "ghcr.io/4alvit/energy-data-rag-pipeline",
+    "energy-rag-fcc-container.oci.tar": "ghcr.io/4alvit/free-claude-code"
+  }
+}
