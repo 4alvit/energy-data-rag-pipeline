@@ -21,14 +21,53 @@ spec:
       labels:
         app: gha-runner-fcc
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 121
+        fsGroup: 121
+        seccompProfile:
+          type: RuntimeDefault
       nodeSelector:
         kubernetes.io/hostname: h7
+      initContainers:
+        - name: prepare-runner
+          image: myoung34/github-runner:ubuntu-noble@sha256:e296eae61d13a4eb4f88c5cef4d911019bebfbbcf3ded179e96cc1bf5d09c98b
+          command: ["/bin/bash", "-euc"]
+          args:
+            - |
+              cp -a --no-preserve=ownership /actions-runner/. /runner-runtime/
+              cp -a --no-preserve=ownership /home/runner/. /runner-home/
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: runtime
+              mountPath: /runner-runtime
+            - name: home
+              mountPath: /runner-home
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
       containers:
         - name: runner
           # multi-arch; k3s on h7 pulls linux/arm64
-          image: myoung34/github-runner:ubuntu-noble
+          image: myoung34/github-runner:ubuntu-noble@sha256:e296eae61d13a4eb4f88c5cef4d911019bebfbbcf3ded179e96cc1bf5d09c98b
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           env:
+            - name: RUN_AS_ROOT
+              value: "false"
             - name: REPO_URL
               value: https://github.com/4alvit/iot-project-builder-profile
             - name: RUNNER_NAME
@@ -47,6 +86,14 @@ spec:
                   name: gha-runner-fcc
                   key: ACCESS_TOKEN
           volumeMounts:
+            - name: runtime
+              mountPath: /actions-runner
+            - name: home
+              mountPath: /home/runner
+            - name: toolcache
+              mountPath: /opt/hostedtoolcache
+            - name: tmp
+              mountPath: /tmp
             - name: work
               mountPath: /runner/_work
           resources:
@@ -57,5 +104,13 @@ spec:
               cpu: "2"
               memory: 2Gi
       volumes:
+        - name: runtime
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
+        - name: toolcache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
         - name: work
           emptyDir: {}

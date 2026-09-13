@@ -10,19 +10,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast dependency resolution
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
 # Copy dependency files first for layer caching
-COPY pyproject.toml uv.lock* README.md version ./
+COPY pyproject.toml uv.lock README.md version ./
 
 # Project sources are needed because uv installs the root package itself
 COPY src/ ./src/
 
 # Create virtual environment and install dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --extra mcp --extra openai --extra anthropic
+    uv sync --locked --no-dev --extra mcp --extra openai --extra anthropic
 
 # Runtime stage
 FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS runtime

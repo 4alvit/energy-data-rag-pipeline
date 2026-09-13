@@ -16,10 +16,22 @@ spec:
         app: mcp
     spec:
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       imagePullSecrets:
         - name: ghcr-pull
       containers:
         - name: mcp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           image: ghcr.io/4alvit/energy-data-rag-pipeline:latest
           args:
             - energy-rag-mcp
@@ -43,6 +55,9 @@ spec:
                 configMapKeyRef:
                   name: energy-rag-config
                   key: LOG_LEVEL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 50m
@@ -59,6 +74,9 @@ spec:
               port: 8800
             initialDelaySeconds: 30
             periodSeconds: 30
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

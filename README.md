@@ -249,17 +249,11 @@ uv run ruff format .
 uv run pylint src/energy_rag
 ```
 
-## CI/CD
+<!-- ci-release-process:start -->
+## Release process
 
-- **CI** (`.github/workflows/ci.yml`): Ruff, Pylint, pytest + coverage,
-  SonarCloud
-- **Release** (`.github/workflows/release.yml`): on `v*` tags — tests, build,
-  GitHub Release with artifacts
-- **Docker Publish** (`.github/workflows/docker-publish.yml`): multi-arch
-  (amd64+arm64) images to `ghcr.io/4alvit/energy-data-rag-pipeline`
-
-Versioning: root `version` file = `pyproject.toml` version = git tag. Runbook:
-[docs/release-and-images.md](docs/release-and-images.md).
+See the [release strategy](RELEASING.md) for validation, nightly, beta, RC and stable promotion rules, and the [operator runbook](docs/release-workflow.md) for local commands.
+<!-- ci-release-process:end -->
 
 ## Project Structure
 
