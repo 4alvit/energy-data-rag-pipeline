@@ -20,10 +20,22 @@ spec:
         app: fcc
     spec:
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       imagePullSecrets:
         - name: ghcr-pull
       containers:
         - name: fcc
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           image: ghcr.io/4alvit/free-claude-code:latest
           ports:
             - containerPort: 8082
@@ -67,6 +79,8 @@ spec:
                   key: ANTHROPIC_API_KEY
                   optional: true
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: fcc-config
               mountPath: /home/fcc/.fcc
           resources:
@@ -86,6 +100,8 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 30
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: fcc-config
           emptyDir: {}
 ---

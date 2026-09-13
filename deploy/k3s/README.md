@@ -127,3 +127,34 @@ kubectl -n energy-rag create secret generic gha-runner-fcc \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f gha-runner-fcc.yaml
 ```
+
+## Container filesystem permissions
+
+The API, MCP, and FCC containers run as UID/GID 1000; PostgreSQL runs as
+UID/GID 999. Their root filesystems are read-only, capabilities are dropped,
+and privilege escalation is disabled. `/tmp` uses `emptyDir`, and PostgreSQL
+also mounts writable socket storage at `/var/run/postgresql`.
+
+Application data, model caches, FCC configuration, and PostgreSQL data retain
+their existing volumes. Pod `fsGroup` grants the service group access when the
+volume driver supports it; check existing PVC ownership during rollout. The
+PostgreSQL image was locally verified with `initdb`, startup, readiness, and
+shutdown using these restrictions and disposable storage. Existing cluster
+PVC permissions and a live rollout still require operator verification.
+
+
+The runner uses the pinned multi-architecture `myoung34/github-runner:ubuntu-noble`
+image as UID 1001 / GID 121 with `RUN_AS_ROOT=false`, no privilege escalation,
+and a read-only container root filesystem. A non-root init container copies the
+image's runner installation and home directory into emptyDir volumes. Registration
+state and diagnostics, the Python tool cache, home, temporary files and the existing
+work directory remain writable. The same image digest is used for initialization
+and execution; update both references together after validating its runner UID/GID.
+No Docker socket or privileged container is needed by the current profile workflow.
+
+The image entrypoint and Runner.Listener were verified offline under these
+constraints, including writes to each mounted path and rejection of writes to the
+root filesystem. Registration was stubbed and networking disabled for this check;
+it did not register or replace the live runner. Production registration and a real
+profile job must be checked during the separately approved deployment. Drain the
+existing runner before applying this manifest; this change does not deploy it.
