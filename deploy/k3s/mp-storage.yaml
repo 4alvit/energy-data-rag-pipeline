@@ -1,0 +1,36 @@
+# New claims deliberately leave the h7 claims available for a controlled rollback.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: energy-rag-data-nfs-v1
+  namespace: energy-rag
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-synology-v4
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-mp-v1
+  namespace: energy-rag
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backups-nfs-v1
+  namespace: energy-rag
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-synology-v4
+  resources:
+    requests:
+      storage: 5Gi

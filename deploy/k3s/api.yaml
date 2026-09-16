@@ -7,6 +7,8 @@ metadata:
     app: api
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: api
@@ -15,6 +17,8 @@ spec:
       labels:
         app: api
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: mp
       enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
@@ -32,7 +36,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
-          image: ghcr.io/4alvit/energy-data-rag-pipeline:latest
+          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:432037c87980b1a468e8462686b946896f022863f6195632e89cade182b36559
           ports:
             - containerPort: 8000
               name: http
@@ -62,6 +66,7 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: /data
+              subPath: data
             - name: hf-cache
               mountPath: /app/.cache
           resources:
@@ -87,7 +92,7 @@ spec:
           emptyDir: {}
         - name: data
           persistentVolumeClaim:
-            claimName: energy-rag-data
+            claimName: energy-rag-data-nfs-v1
         - name: hf-cache
           emptyDir: {}
 ---
