@@ -233,6 +233,13 @@ def rollback_patch(current: dict, original: dict) -> list[dict]:
         raise ValueError(
             "Rollback requires the same deployment, stopped before changing its source"
         )
+    spec = copy.deepcopy(original["spec"]["template"]["spec"])
+    name = original["metadata"]["name"]
+    if name not in CLAIMS:
+        raise ValueError("Unexpected rollback deployment")
+    next(c for c in spec["containers"] if c["name"] == name)["image"] = (
+        API_IMAGE if name == "api" else PG_IMAGE
+    )
     return [
         {"op": "test", "path": "/metadata/uid", "value": current["metadata"]["uid"]},
         {
@@ -244,7 +251,7 @@ def rollback_patch(current: dict, original: dict) -> list[dict]:
         {
             "op": "replace",
             "path": "/spec/template/spec",
-            "value": original["spec"]["template"]["spec"],
+            "value": spec,
         },
         {"op": "add", "path": "/spec/strategy", "value": {"type": "Recreate"}},
         {"op": "replace", "path": "/spec/replicas", "value": original["spec"].get("replicas", 1)},

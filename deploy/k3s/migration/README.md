@@ -145,7 +145,9 @@ pods after observation; retain old PVCs and the migration evidence.
 Before the replacement API is allowed to write, stop both new Deployments, wait
 for their pods to disappear, and generate UID/resourceVersion-tested rollback
 patches. They restore the saved live PodSpecs and original replica counts while
-keeping `Recreate` and the protective PDB. Services and all PVCs stay unchanged.
+keeping `Recreate`, the protective PDB, and the exact original deployed image
+indexes. Reusing the old mutable image tag during rollback could silently upgrade
+the workload. Services and all PVCs stay unchanged.
 
 ```bash
 set -euo pipefail

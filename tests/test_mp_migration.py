@@ -136,7 +136,10 @@ class MigrationTests(unittest.TestCase):
         )
         original = copy.deepcopy(item)
         original["spec"]["replicas"] = 1
-        self.assertEqual(migration.rollback_patch(item, original)[-1]["value"], 1)
+        rollback = migration.rollback_patch(item, original)
+        self.assertEqual(rollback[-1]["value"], 1)
+        rollback_spec = next(op["value"] for op in rollback if op["path"] == "/spec/template/spec")
+        self.assertEqual(rollback_spec["containers"][0]["image"], migration.PG_IMAGE)
         item["metadata"]["uid"] = "replacement"
         with self.assertRaises(ValueError):
             migration.rollback_patch(item, original)
