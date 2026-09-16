@@ -75,6 +75,13 @@ spec:
               memory: 512Mi
             limits:
               memory: 2Gi
+          # Cold Python/ML imports on mp can exceed the steady-state liveness budget.
+          startupProbe:
+            tcpSocket:
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 90
           readinessProbe:
             tcpSocket:
               port: 8000

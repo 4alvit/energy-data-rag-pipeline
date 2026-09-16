@@ -87,6 +87,15 @@ class MigrationTests(unittest.TestCase):
         )
         self.assertEqual(spec["volumes"][1], before["volumes"][1])
         self.assertEqual(spec["containers"][0]["image"], migration.API_IMAGE)
+        self.assertEqual(
+            spec["containers"][0]["startupProbe"],
+            {
+                "tcpSocket": {"port": 8000},
+                "periodSeconds": 10,
+                "timeoutSeconds": 5,
+                "failureThreshold": 90,
+            },
+        )
         self.assertEqual(spec["containers"][0]["volumeMounts"][0]["subPath"], "data")
         self.assertEqual(
             [op["path"] for op in patch[:3]],

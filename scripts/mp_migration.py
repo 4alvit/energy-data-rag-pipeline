@@ -201,6 +201,12 @@ def cutover_patch(deployment: dict, name: str) -> list[dict]:
     data["persistentVolumeClaim"]["claimName"] = CLAIMS[name][1]
     if name == "api":
         next(v for v in container["volumeMounts"] if v["name"] == "data")["subPath"] = "data"
+        container["startupProbe"] = {
+            "tcpSocket": {"port": 8000},
+            "periodSeconds": 10,
+            "timeoutSeconds": 5,
+            "failureThreshold": 90,
+        }
     else:
         for probe_name in ("readinessProbe", "livenessProbe"):
             probe = container.get(probe_name)

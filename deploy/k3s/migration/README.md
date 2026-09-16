@@ -12,6 +12,10 @@ MCP, FCC, the runner, Secrets, and Services are not changed by this procedure.
   `postgres-data-mp-v1` on local `mp` storage. Never copy the old PGDATA directory
   across architectures. The initial source is PostgreSQL 16.15 / vector 0.8.6.
 - Both deployed multi-architecture image indexes are pinned in the manifests.
+- API gets a bounded 15-minute TCP startup probe for cold Python/ML imports on
+  mp. Its ordinary readiness and liveness checks remain unchanged after startup.
+  Port readiness alone is insufficient: the final health checks must also confirm
+  database connectivity.
 - PostgreSQL probes receive a bounded 5-second timeout where the old default was
   1 second; commands, delays, periods, and failure thresholds stay unchanged.
   The rehearsal observed exec startup timeouts under mp CPU load while the
@@ -128,7 +132,7 @@ kubectl --context k3s-heaven -n energy-rag rollout status deployment/postgres --
 # PostgreSQL must pass the same complete checks before starting API writes.
 python3 scripts/mp_migration.py verify --directory "$RAG_MIGRATION_DIR" --pg-pod auto --verification-label production-before-api
 kubectl --context k3s-heaven -n energy-rag patch deployment/api --type=json --patch-file "$RAG_MIGRATION_DIR/patches-api.json"
-kubectl --context k3s-heaven -n energy-rag rollout status deployment/api --timeout=600s
+kubectl --context k3s-heaven -n energy-rag rollout status deployment/api --timeout=1200s
 kubectl --context k3s-heaven -n energy-rag apply -f deploy/k3s/postgres-backup.yaml
 kubectl --context k3s-heaven -n energy-rag create job --from=cronjob/postgres-logical-backup postgres-logical-backup-migration-check
 kubectl --context k3s-heaven -n energy-rag wait --for=condition=complete job/postgres-logical-backup-migration-check --timeout=1800s
