@@ -1,0 +1,12 @@
+# A single database must not be repeatedly evicted by the descheduler.
+# Intentional scale-down/replacement remains an explicit maintenance operation.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres
+  namespace: energy-rag
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres

@@ -1,0 +1,135 @@
+# Apply only during the documented migration. Neither pod matches production Services.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: energy-rag-data-migration
+  namespace: energy-rag
+  labels:
+    app: energy-rag-data-migration
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: h7
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: copy
+      image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:432037c87980b1a468e8462686b946896f022863f6195632e89cade182b36559
+      command: [python, -c, "import time; time.sleep(7200)"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      resources:
+        requests: {cpu: 10m, memory: 64Mi}
+        limits: {cpu: 500m, memory: 256Mi}
+      volumeMounts:
+        - {name: source, mountPath: /source, readOnly: true}
+        - {name: target, mountPath: /target}
+        - {name: backups, mountPath: /backups}
+        - {name: tmp, mountPath: /tmp}
+  volumes:
+    - name: source
+      persistentVolumeClaim: {claimName: energy-rag-data, readOnly: true}
+    - name: target
+      persistentVolumeClaim: {claimName: energy-rag-data-nfs-v1}
+    - name: backups
+      persistentVolumeClaim: {claimName: postgres-backups-nfs-v1}
+    - name: tmp
+      emptyDir: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgres-mp-restore
+  namespace: energy-rag
+  labels:
+    app: postgres-migration
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: mp
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: postgres
+      image: pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      env:
+        - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef: {name: energy-rag-config, key: POSTGRES_DB}
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef: {name: energy-rag-config, key: POSTGRES_USER}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef: {name: energy-rag-secrets, key: POSTGRES_PASSWORD}
+      readinessProbe:
+        exec:
+          command: [sh, -ceu, 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+        periodSeconds: 5
+        timeoutSeconds: 5
+      resources:
+        requests: {cpu: 100m, memory: 256Mi}
+        limits: {cpu: "1", memory: 1Gi}
+      volumeMounts:
+        - {name: data, mountPath: /var/lib/postgresql/data}
+        - {name: run, mountPath: /var/run/postgresql}
+        - {name: tmp, mountPath: /tmp}
+  volumes:
+    - name: data
+      persistentVolumeClaim: {claimName: postgres-data-mp-v1}
+    - name: run
+      emptyDir: {}
+    - name: tmp
+      emptyDir: {}
+---
+# Pull the exact AMD64 API image before starting the maintenance window.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: energy-rag-api-preflight
+  namespace: energy-rag
+  labels:
+    app: energy-rag-api-preflight
+spec:
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: mp
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: preflight
+      image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:432037c87980b1a468e8462686b946896f022863f6195632e89cade182b36559
+      command: [python, -c, "import time; time.sleep(7200)"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      resources:
+        requests: {cpu: 10m, memory: 32Mi}
+        limits: {cpu: 250m, memory: 128Mi}

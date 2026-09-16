@@ -39,6 +39,10 @@ Full RAG-consumable documentation lives in [`docs/`](docs/index.md) — start at
 the [index](docs/index.md). `scripts/export_docs_corpus.py` turns it into
 `docs-corpus/corpus.json` that can be ingested by this very pipeline.
 
+The [k3s migration runbook](deploy/k3s/migration/README.md) covers the guarded
+h7-to-mp API/PostgreSQL move, retained rollback volumes, and daily NAS logical
+backups. Follow that procedure before applying the changed storage manifests.
+
 ## Quickstart
 
 ```bash

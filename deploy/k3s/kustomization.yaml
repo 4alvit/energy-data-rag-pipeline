@@ -7,6 +7,9 @@ resources:
   - postgres-init-configmap.yaml
   - postgres-pvc.yaml
   - data-pvc.yaml
+  - mp-storage.yaml
+  - postgres-pdb.yaml
+  - postgres-backup.yaml
   - postgres.yaml
   - api.yaml
   - mcp.yaml
@@ -15,7 +18,5 @@ resources:
   - certificate-k3s-tls.yaml
   - ingress-mcp.yaml
 images:
-  - name: ghcr.io/4alvit/energy-data-rag-pipeline
-    newTag: latest
   - name: ghcr.io/4alvit/free-claude-code
     newTag: latest

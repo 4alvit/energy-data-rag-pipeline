@@ -1,5 +1,5 @@
 # Repo-scoped GitHub Actions runner for 4alvit/iot-project-builder-profile
-# labels: self-hosted,fcc,h7 — pinned to h7 (arm64) next to energy-rag/fcc.
+# Labels: self-hosted,fcc,mp; the mp worker runs linux/amd64.
 # Secret (not in git): kubectl -n energy-rag create secret generic gha-runner-fcc \
 #   --from-literal=ACCESS_TOKEN=ghp_... --dry-run=client -o yaml | kubectl apply -f -
 apiVersion: apps/v1
@@ -29,10 +29,10 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       nodeSelector:
-        kubernetes.io/hostname: h7
+        kubernetes.io/hostname: mp
       initContainers:
         - name: prepare-runner
-          image: myoung34/github-runner:ubuntu-noble@sha256:e296eae61d13a4eb4f88c5cef4d911019bebfbbcf3ded179e96cc1bf5d09c98b
+          image: myoung34/github-runner:ubuntu-noble@sha256:73cb29da78cd5fd7cc2612b563a844052729a87a913469abade6184299220752
           command: ["/bin/bash", "-euc"]
           args:
             - |
@@ -57,8 +57,8 @@ spec:
               memory: 512Mi
       containers:
         - name: runner
-          # multi-arch; k3s on h7 pulls linux/arm64
-          image: myoung34/github-runner:ubuntu-noble@sha256:e296eae61d13a4eb4f88c5cef4d911019bebfbbcf3ded179e96cc1bf5d09c98b
+          # Multi-architecture index verified against the deployed runner version.
+          image: myoung34/github-runner:ubuntu-noble@sha256:73cb29da78cd5fd7cc2612b563a844052729a87a913469abade6184299220752
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
@@ -71,11 +71,11 @@ spec:
             - name: REPO_URL
               value: https://github.com/4alvit/iot-project-builder-profile
             - name: RUNNER_NAME
-              value: h7-fcc-k3s
+              value: mp-fcc-k3s
             - name: RUNNER_SCOPE
               value: repo
             - name: LABELS
-              value: self-hosted,fcc,h7
+              value: self-hosted,fcc,mp
             - name: DISABLE_AUTO_UPDATE
               value: "true"
             - name: RUNNER_WORKDIR

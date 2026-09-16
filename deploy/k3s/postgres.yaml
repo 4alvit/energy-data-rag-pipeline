@@ -7,6 +7,8 @@ metadata:
     app: postgres
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: postgres
@@ -15,6 +17,8 @@ spec:
       labels:
         app: postgres
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: mp
       enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
@@ -30,11 +34,13 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
-          image: pgvector/pgvector:pg16
+          image: pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
           ports:
             - containerPort: 5432
               name: postgres
           env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
             - name: POSTGRES_DB
               valueFrom:
                 configMapKeyRef:
@@ -69,11 +75,13 @@ spec:
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "rag", "-d", "energy_rag"]
+            timeoutSeconds: 5
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "rag", "-d", "energy_rag"]
+            timeoutSeconds: 5
             initialDelaySeconds: 30
             periodSeconds: 20
       volumes:
@@ -83,7 +91,7 @@ spec:
           emptyDir: {}
         - name: data
           persistentVolumeClaim:
-            claimName: postgres-data
+            claimName: postgres-data-mp-v1
         - name: init
           configMap:
             name: postgres-init
