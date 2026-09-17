@@ -65,7 +65,7 @@ jobs:
         TEST_DATABASE_URL: postgresql+asyncpg://rag:testpass@localhost:5432/energy_rag_test
         EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
     - name: Upload coverage
-      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
+      uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4
       with:
         files: ./coverage.xml
 'on':
