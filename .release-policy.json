@@ -6,7 +6,8 @@
   "validation_workflows": [
     "ci.yml",
     "codeql.yml",
-    "release-security.yml"
+    "release-security.yml",
+    "dependency-review.yml"
   ],
   "artifact_pattern": "release-assets*",
   "version_file": "version",
@@ -22,5 +23,6 @@
     "energy-data-rag-pipeline-container.oci.tar": "ghcr.io/4alvit/energy-data-rag-pipeline",
     "energy-rag-fcc-container.oci.tar": "ghcr.io/4alvit/free-claude-code"
   },
-  "visibility": "public"
+  "visibility": "public",
+  "single_entry_ci": true
 }
