@@ -44,7 +44,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         TAG: ${{ inputs.tag }}
-      run: python3 scripts/verified_images.py --tag "v$TAG" --output "$RUNNER_TEMP/verified-images.json"
+      run: python3 scripts/verified_images.py --tag "v$TAG" --output "$RUNNER_TEMP/verified-images.json" --output-root "$RUNNER_TEMP"
     - name: Setup kubectl
       uses: azure/setup-kubectl@911ae5630d033486b4382f7ce3a3375d2b2f7383
       with:
