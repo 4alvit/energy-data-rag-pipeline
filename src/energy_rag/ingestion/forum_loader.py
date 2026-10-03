@@ -152,18 +152,29 @@ def _build_post_content(post: dict) -> str:
             body = soup.get_text(separator="\n", strip=True)
         parts.append(body)
 
-    # Add answers/replies
+    # Add answers/replies (dict entries or plain strings)
     answers = post.get("answers", post.get("replies", []))
     if answers:
-        parts.append("\n## Answers")
+        answer_parts = []
         for i, answer in enumerate(answers, 1):
-            answer_body = answer.get("body", answer.get("content", ""))
+            if isinstance(answer, str):
+                answer_body = answer
+                accepted = ""
+            elif isinstance(answer, dict):
+                answer_body = answer.get("body", answer.get("content", "")) or ""
+                accepted = " ✓" if answer.get("accepted", answer.get("is_accepted", False)) else ""
+            else:
+                answer_body = str(answer) if answer is not None else ""
+                accepted = ""
             if answer_body:
                 if "<" in answer_body and ">" in answer_body:
                     soup = BeautifulSoup(answer_body, "html.parser")
                     answer_body = soup.get_text(separator="\n", strip=True)
-                accepted = " ✓" if answer.get("accepted", answer.get("is_accepted", False)) else ""
-                parts.append(f"\n### Answer {i}{accepted}\n{answer_body}")
+                if answer_body.strip():
+                    answer_parts.append(f"\n### Answer {i}{accepted}\n{answer_body}")
+        if answer_parts:
+            parts.append("\n## Answers")
+            parts.extend(answer_parts)
 
     return "\n".join(parts)
 
