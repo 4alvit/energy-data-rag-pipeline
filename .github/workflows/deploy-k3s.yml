@@ -24,11 +24,11 @@ jobs:
             raise SystemExit('Deploy requires an approved stable X.Y.Z image, never latest/beta/rc')
         PYVERSION
     - name: Harden runner
-      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+      uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
       with:
         egress-policy: audit
     - name: Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - name: Install deployment verification tools
       run: |-
         sudo apt-get update
@@ -46,7 +46,7 @@ jobs:
         TAG: ${{ inputs.tag }}
       run: python3 scripts/verified_images.py --tag "v$TAG" --output "$RUNNER_TEMP/verified-images.json" --output-root "$RUNNER_TEMP"
     - name: Setup kubectl
-      uses: azure/setup-kubectl@911ae5630d033486b4382f7ce3a3375d2b2f7383
+      uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4
       with:
         version: v1.31.4
     - name: Write kubeconfig
