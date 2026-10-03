@@ -4,7 +4,8 @@
 #
 # Upstream has no PyPI package and no release tags, so the install URL is
 # pinned to a commit and archive hash in requirements.txt. Runtime versions
-# come from that commit's uv.lock; the build backend is separately hash-locked.
+# start from that commit's uv.lock with targeted advisory fixes recorded in
+# requirements.in; the build backend is separately hash-locked.
 # Admin UI (model/provider config) is served on the same port as the proxy.
 
 FROM python:3.14-slim@sha256:0741d101873c12ab927e6f8653feb8862b9bd58771177acb1b885b95141f91b4
@@ -18,7 +19,7 @@ LABEL org.opencontainers.image.description="Free Claude Code proxy server (headl
 COPY requirements.txt requirements-build.txt /tmp/fcc-dependencies/
 RUN grep -F "/archive/${FCC_REF}.tar.gz" /tmp/fcc-dependencies/requirements.txt > /dev/null && \
     pip install --no-cache-dir --only-binary=:all: --require-hashes -r /tmp/fcc-dependencies/requirements-build.txt && \
-    pip install --no-cache-dir --no-build-isolation --require-hashes -r /tmp/fcc-dependencies/requirements.txt
+    pip install --no-cache-dir --only-binary=:all: --no-binary=free-claude-code --no-build-isolation --require-hashes -r /tmp/fcc-dependencies/requirements.txt
 
 ENV PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \
