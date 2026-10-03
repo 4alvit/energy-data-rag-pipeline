@@ -17,7 +17,7 @@
   ],
   "notes": [
     "Integration tests require PostgreSQL with pgvector: local ci.sh provisions a disposable container; CI provisions a matching energy_rag_test service.",
-    "FCC image preserves the pinned upstream source commit; its transitive dependencies remain upstream-managed. Both OCI images preserve amd64 and arm64 builds."
+    "FCC preserves its pinned upstream source commit and uses hash-locked runtime and build dependencies with targeted advisory fixes. Both OCI images preserve amd64 and arm64 builds."
   ],
   "container_assets": {
     "energy-data-rag-pipeline-container.oci.tar": "ghcr.io/4alvit/energy-data-rag-pipeline",
