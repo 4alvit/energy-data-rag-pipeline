@@ -1,29 +1,42 @@
 """Unit tests for JSON answer normalization, without ingestion dependencies."""
 
 import ast
+import json
 import unittest
+from collections.abc import Iterator
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 
-def load_build_post_content(parser):
+def load_forum_functions(parser):
     source = Path(__file__).resolve().parents[1] / "src/energy_rag/ingestion/forum_loader.py"
     tree = ast.parse(source.read_text(encoding="utf-8"))
-    function = next(
+    functions = [
         node
         for node in tree.body
-        if isinstance(node, ast.FunctionDef) and node.name == "_build_post_content"
-    )
-    namespace = {"BeautifulSoup": parser}
-    # Compile the checked-in function only; do not load optional ingestion clients.
-    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), "exec"), namespace)  # noqa: S102
-    return namespace["_build_post_content"]
+        if isinstance(node, ast.FunctionDef)
+        and node.name in {"_build_post_content", "_extract_posts", "load_forum_json"}
+    ]
+    namespace = {
+        "BeautifulSoup": parser,
+        "Document": SimpleNamespace,
+        "Iterator": Iterator,
+        "Path": Path,
+        "json": json,
+    }
+    # Compile the checked-in JSON caller and helpers without optional ingestion clients.
+    exec(compile(ast.Module(body=functions, type_ignores=[]), str(source), "exec"), namespace)  # noqa: S102
+    return namespace
 
 
 class ForumBuildPostContentTests(unittest.TestCase):
     def setUp(self):
         self.parser = Mock()
-        self.build = load_build_post_content(self.parser)
+        functions = load_forum_functions(self.parser)
+        self.build = functions["_build_post_content"]
+        self.load_json = functions["load_forum_json"]
 
     def test_plain_string_answers_and_replies(self):
         for key in ("answers", "replies"):
@@ -46,7 +59,32 @@ class ForumBuildPostContentTests(unittest.TestCase):
 
     def test_empty_answers_are_omitted(self):
         text = self.build({"answers": [None, "", {"body": None}]})
-        self.assertNotIn("### Answer", text)
+        self.assertEqual(text, "")
+
+    def test_whitespace_and_empty_html_answers_are_omitted(self):
+        self.parser.return_value.get_text.return_value = ""
+        for answer in (" \n", "<p></p>", {"body": "<p></p>", "accepted": True}):
+            with self.subTest(answer=answer):
+                self.assertEqual(self.build({"replies": [answer]}), "")
+
+    def test_json_loader_skips_empty_posts_and_preserves_nonempty_answers(self):
+        self.parser.return_value.get_text.return_value = ""
+        posts = [
+            {"answers": [""]},
+            {"replies": [" \n", None]},
+            {"answers": [{"body": "<p></p>"}]},
+            {"title": "Question", "answers": ["", "Actual answer", None]},
+        ]
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / "posts.json"
+            source.write_text(json.dumps({"posts": posts}), encoding="utf-8")
+            documents = list(self.load_json(source))
+        self.assertEqual(len(documents), 1)
+        self.assertEqual(
+            documents[0].page_content,
+            "# Question\n\n## Answers\n\n### Answer 2\nActual answer",
+        )
+        self.assertEqual(documents[0].metadata["title"], "Question")
 
     def test_string_html_uses_the_existing_html_cleaner(self):
         self.parser.return_value.get_text.return_value = "clean answer"
