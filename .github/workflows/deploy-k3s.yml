@@ -33,7 +33,7 @@ jobs:
       run: |-
         sudo apt-get update
         sudo apt-get install -y skopeo
-        python3 -m pip install PyYAML==6.0.3
+        python3 -m pip install --require-hashes --only-binary=:all: -r .github/requirements-workflow-contracts.txt
     - name: Require protected production environment
       env:
         GH_TOKEN: ${{ github.token }}
