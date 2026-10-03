@@ -1,5 +1,5 @@
 # Pinned upstream FCC 5.14.0 runtime graph with targeted fixes for the security
-# advisories affecting anyio, cryptography, python-multipart, starlette and urllib3.
+# advisories affecting anyio, cryptography, pygments, python-multipart, starlette and urllib3.
 aiohappyeyeballs==2.6.1
 aiohttp==3.14.3
 aiosignal==1.4.0
@@ -51,7 +51,7 @@ pydantic==2.13.4
 pydantic-core==2.46.4
 pydantic-extra-types==2.11.0
 pydantic-settings==2.14.2
-pygments==2.19.2
+pygments==2.20.0
 pyobjc-core==12.2.1 ; sys_platform == 'darwin'
 pyobjc-framework-cocoa==12.2.1 ; sys_platform == 'darwin'
 pyobjc-framework-quartz==12.2.1 ; sys_platform == 'darwin'
