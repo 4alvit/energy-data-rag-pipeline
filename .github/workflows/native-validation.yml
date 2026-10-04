@@ -1,0 +1,42 @@
+name: Native container validation
+'on':
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.scope.outputs.mode }}
+      version: ${{ steps.scope.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Bind native validation to its outer workflow
+        id: scope
+        run: python3 scripts/native_validation.py scope
+  build:
+    needs: scope
+    if: ${{ needs.scope.outputs.mode == 'native' }}
+    uses: ./.github/workflows/release-build.yml
+    with:
+      version: ${{ needs.scope.outputs.version }}
+      channel: beta
+    permissions:
+      contents: read
+  gate:
+    name: Native container gate
+    needs: [scope, build]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require complete native build or the explicit release gate
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: python3 scripts/native_validation.py gate

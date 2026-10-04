@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.10] - 2026-10-04
+
+### Changed
+- Build RAG and FCC release images on native AMD64 and ARM64 runners. Assemble
+  the same two multi-platform OCI assets offline, preserving SBOM and provenance.
+- Require native architecture, non-root image startup and offline HTTP smoke checks
+  before PR merge and release publication. Record exact source, run attempt,
+  image configuration, filesystem digests and toolchain evidence with the assets.
+
 ## [0.2.5] - 2026-08-25
 
 ### Fixed
