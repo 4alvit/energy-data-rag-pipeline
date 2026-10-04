@@ -43,7 +43,9 @@ def main():
         )
         for name in ("torch", "numpy", "asyncpg", "pymupdf", "energy_rag.api.main"):
             importlib.import_module(name)
-        entries = importlib.metadata.entry_points(group="console_scripts", name="energy-rag-api")
+        entries = tuple(
+            importlib.metadata.entry_points(group="console_scripts", name="energy-rag-api")
+        )
         require(
             len(entries) == 1 and callable(entries[0].load()), "RAG console entrypoint is invalid"
         )

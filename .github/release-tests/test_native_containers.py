@@ -233,6 +233,47 @@ class NativeContainersTest(unittest.TestCase):
                 native.build(ROOT, self.output, "rag", "arm64", "0.2.10", "beta")
             command.assert_not_called()
 
+    def test_build_names_oci_export_without_pushing_a_registry(self):
+        def build_fixture(arguments, **kwargs):
+            self.assertEqual(
+                arguments[arguments.index("--tag") + 1],
+                "energy-native-rag:" + EXPECTED["version"] + "-" + EXPECTED["revision"],
+            )
+            self.assertNotIn("--push", arguments)
+            self.assertNotIn("--load", arguments)
+            self.assertEqual(arguments[arguments.index("--platform") + 1], "linux/amd64")
+            output = arguments[arguments.index("--output") + 1]
+            self.assertTrue(output.startswith("type=oci,dest="))
+            self.archive("amd64", Path(output.removeprefix("type=oci,dest=")))
+
+        environment = {
+            "RUNNER_ARCH": "X64",
+            "RUNNER_OS": "Linux",
+            "DOCKER_HOST": "unix:///var/run/docker.sock",
+        }
+        runtime = {
+            "product": "rag",
+            "architecture": "amd64",
+            "uid": 1000,
+            "scope": native.SMOKE_SCOPE["rag"],
+            "status": "passed",
+        }
+        with (
+            mock.patch.dict("os.environ", environment, clear=True),
+            mock.patch.object(native, "binding", return_value=EXPECTED),
+            mock.patch.object(native.platform, "system", return_value="Linux"),
+            mock.patch.object(native.platform, "machine", return_value="x86_64"),
+            mock.patch.object(native.package, "snapshot", return_value=[]),
+            mock.patch.object(native, "smoke", return_value=runtime),
+            mock.patch.object(native, "command", return_value="fixture-tool-version"),
+            mock.patch.object(native.subprocess, "run", side_effect=build_fixture) as build,
+        ):
+            native.build(ROOT, self.output, "rag", "amd64", EXPECTED["version"], "beta")
+            build.assert_called_once()
+        receipt = json.loads((self.output / "receipt.json").read_text())
+        self.assertEqual(receipt["archive"], native.file_identity(self.output / "image.oci.tar"))
+        self.assertEqual(receipt["smoke"], runtime)
+
     def prepare_assembly(self):
         for product in native.PRODUCTS:
             for arch in native.ARCHITECTURES:

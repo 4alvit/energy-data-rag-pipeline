@@ -253,7 +253,7 @@ def build(root, output, product, arch, version, channel):
     oci.require(not any(output.iterdir()), "Native output must be empty")
     target = output / "image.oci.tar"
     with TemporaryDirectory(prefix="native-source-") as directory:
-        source = Path(directory)
+        source = Path(directory).resolve()
         names = package.snapshot(root, source)
         inputs_digest = fingerprint(source, names)
         context, dockerfile = (
@@ -274,6 +274,10 @@ def build(root, output, product, arch, version, channel):
                 f"linux/{arch}",
                 "--provenance=true",
                 "--sbom=true",
+                # BuildKit derives in-toto subjects from ImageName. This names
+                # the local OCI export only; neither --push nor registry output is used.
+                "--tag",
+                f"energy-native-{product}:{version}-{expected['revision']}",
                 "--label",
                 f"org.opencontainers.image.version={version}",
                 "--label",
@@ -362,7 +366,7 @@ def assemble(root, inputs, output, version, channel):
     cells = {f"{product}-{arch}" for product in PRODUCTS for arch in ARCHITECTURES}
     oci.require({path.name for path in inputs.iterdir()} == cells, "Native cell inventory differs")
     with TemporaryDirectory(prefix="native-assembly-source-") as directory:
-        source = Path(directory)
+        source = Path(directory).resolve()
         inputs_digest = fingerprint(source, package.snapshot(root, source))
     receipts, archives = {}, {}
     # Validate all cells before creating any candidate output.

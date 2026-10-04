@@ -1,4 +1,5 @@
-# Vendored release toolkit; change the toolkit source, then render again.
+# Derived from dbus-event-log 09f1ed1425cc7d266281fdd5dcf9800ca22abfa1.
+# Energy adaptation: bounded 8 MB attestation JSON; preserve on upstream refresh.
 # ruff: noqa
 # mypy: ignore-errors
 # pylint: skip-file
@@ -546,6 +547,30 @@ class MergeTest(unittest.TestCase):
         inputs = self.inputs(entries)
         with self.assertRaisesRegex(ValueError, "variant"):
             self.merge(inputs)
+
+    def large_attestation(self, size):
+        entries = self.fixture("amd64", nested=False, attestation="legacy")
+        def enlarge(manifest):
+            statement = json.loads(entries["blobs/sha256/" + manifest["layers"][0]["digest"][7:]])
+            statement["predicate"]["fixture_padding"] = "x" * size
+            manifest["layers"][0] = self.blob(entries, statement, oci.IN_TOTO)
+        self.rewrite_manifest(entries, enlarge, index=1)
+        return self.archive("large-attestation.tar", entries)
+
+    def test_large_attestation_uses_its_own_bounded_budget(self):
+        path = self.large_attestation(oci.MAX_JSON + 1)
+        with oci.ExitStack() as stack:
+            checked = oci.Archive(path, "linux/amd64", VERSION, REVISION, stack)
+            self.assertTrue(checked.attestations)
+        # Aggregate accounting still applies to large statements.
+        with mock.patch.object(oci, "MAX_JSON_TOTAL", oci.MAX_JSON), oci.ExitStack() as stack:
+            with self.assertRaisesRegex(ValueError, "Too much OCI metadata"):
+                oci.Archive(path, "linux/amd64", VERSION, REVISION, stack)
+
+    def test_attestation_larger_than_its_explicit_limit_is_rejected(self):
+        path = self.large_attestation(oci.MAX_ATTESTATION_JSON + 1)
+        with oci.ExitStack() as stack, self.assertRaisesRegex(ValueError, "oversized"):
+            oci.Archive(path, "linux/amd64", VERSION, REVISION, stack)
 
     def test_input_symlink_and_oversized_json_are_rejected(self):
         inputs = self.inputs()

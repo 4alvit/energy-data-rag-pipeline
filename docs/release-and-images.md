@@ -39,7 +39,9 @@ The tracked source archive, `native-build-evidence.json` and `SHA256SUMS` accomp
 them. Evidence records the original native archive hashes, tested image identities,
 runner architectures, tool versions and timings. The OCI merge helper and its
 regression suite originate from the reviewed EventLog native release adapter
-(commit `09f1ed1425cc7d266281fdd5dcf9800ca22abfa1`).
+(commit `09f1ed1425cc7d266281fdd5dcf9800ca22abfa1`). Energy permits in-toto
+statements up to 8 MB because existing RAG/FCC SBOMs measure 3.85/2.64 MB;
+index/config metadata remains limited to 2 MB and total metadata to 32 MB.
 
 ## Required gates and retries
 
