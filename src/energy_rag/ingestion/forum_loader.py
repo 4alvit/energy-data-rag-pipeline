@@ -234,3 +234,4 @@ def load_victron_community_export(export_dir: Path) -> Iterator[Document]:
             yield from load_forum_json(json_file)
         except Exception as e:
             logger.error("Failed to load %s: %s", json_file, e)
+            raise

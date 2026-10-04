@@ -1,12 +1,14 @@
 """Audit persistence across real SQLAlchemy rollbacks, without external services."""
 
+import json
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from langchain_core.documents import Document
 from sqlalchemy import select, text
 
-from energy_rag.ingestion import service
+from energy_rag.chunking import create_chunker
+from energy_rag.ingestion import create_ingestion_pipeline, service
 from energy_rag.storage.models import IngestionRunModel
 from energy_rag.storage.pgvector import PgVectorDatabase
 
@@ -115,3 +117,66 @@ async def test_successful_run_is_completed(audit_database, monkeypatch, tmp_path
         assert run.documents_processed == 1
         assert run.chunks_created == 1
         assert run.completed_at is not None
+
+
+@pytest.mark.parametrize("failure_stage", ["load", "chunk"])
+async def test_real_directory_failure_is_persisted(
+    audit_database, monkeypatch, tmp_path, failure_stage
+):
+    """Real directory iteration must reach the audit's failed-transaction path."""
+    directory = tmp_path / "documents"
+    directory.mkdir()
+    source = directory / "manual.json"
+    source.write_text('{"body": "Manual instructions"}' if failure_stage == "chunk" else "invalid")
+    if failure_stage == "load":
+        monkeypatch.setattr(service, "create_chunker", create_chunker)
+        expected_error = json.JSONDecodeError
+    else:
+        chunker = Mock()
+        chunker.chunk_documents.side_effect = RuntimeError("chunking failed")
+        monkeypatch.setattr(service, "create_chunker", lambda _: chunker)
+        expected_error = RuntimeError
+    monkeypatch.setattr(service, "create_ingestion_pipeline", create_ingestion_pipeline)
+    store = Mock(aadd_texts=AsyncMock())
+    monkeypatch.setattr(service, "get_vector_store", lambda: store)
+
+    with pytest.raises(expected_error) as raised:
+        await service.run_ingestion("forum_json", [directory])
+
+    store.aadd_texts.assert_not_awaited()
+    async with audit_database.session() as session:
+        run = (await session.scalars(select(IngestionRunModel))).one()
+        assert run.status == "failed"
+        assert run.error_message == str(raised.value)
+        assert run.chunks_created == 0
+        assert run.completed_at is not None
+        assert (await session.scalar(text("SELECT count(*) FROM processing_marker"))) == 0
+
+
+async def test_real_directory_chunks_preserve_source_for_idempotency(
+    audit_database, monkeypatch, tmp_path
+):
+    """Technical generator chunks embed once, then skip the same source on replay."""
+    directory = tmp_path / "documents"
+    directory.mkdir()
+    source = directory / "manual.json"
+    source.write_text(
+        json.dumps({"body": "# Signals\n\nSignal instructions.\n\n# Modes\n\nMode instructions."})
+    )
+    monkeypatch.setattr(service, "create_chunker", create_chunker)
+    monkeypatch.setattr(service, "create_ingestion_pipeline", create_ingestion_pipeline)
+    store = Mock(aadd_texts=AsyncMock(return_value=["chunk-1", "chunk-2"]))
+    monkeypatch.setattr(service, "get_vector_store", lambda: store)
+
+    assert await service.run_ingestion("forum_json", [directory]) == (1, 2)
+    stored_metadata = store.aadd_texts.await_args.kwargs["metadatas"]
+    assert all(metadata["source"] == str(source) for metadata in stored_metadata)
+    assert all(metadata["chunk_method"] == "markdown_header" for metadata in stored_metadata)
+    monkeypatch.setattr(service, "_stored_sources", AsyncMock(return_value={str(source)}))
+    assert await service.run_ingestion("forum_json", [directory]) == (0, 0)
+    assert store.aadd_texts.await_count == 1
+    async with audit_database.session() as session:
+        runs = (await session.scalars(select(IngestionRunModel))).all()
+        assert len(runs) == 2
+        assert all(run.status == "completed" for run in runs)
+        assert sorted(run.chunks_created for run in runs) == [0, 2]

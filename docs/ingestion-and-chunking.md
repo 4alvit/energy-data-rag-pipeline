@@ -89,6 +89,15 @@ docker compose exec api energy-rag-ingest --source-type forum_json \
 ```
 
 Each run is tracked in `ingestion_runs` with status, counters and error text.
+Individual files and directories both use the selected chunking strategy. All
+strategies accept streaming loader output and retain source metadata for citations
+and source-level duplicate detection. `--no-recursive` excludes nested files for
+PDF, HTML and JSON directories.
+
+A loader or chunking error stops the run and persists a `failed` audit record;
+it is never reported as a successful zero-chunk run. Fix the failing source before
+retrying. Chunks already committed from earlier requested paths are retained and
+skipped by source on retry; ingestion is not atomic across multiple paths.
 
 ## Re-embedding after a model change
 
