@@ -11,31 +11,90 @@ name: Build release assets
 permissions:
   contents: read
 jobs:
-  package:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+  native:
+    name: Native ${{ matrix.product }} ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [rag, fcc]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
     steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        persist-credentials: false
-    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-      with:
-        python-version: '3.12'
-    - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-    - name: Build exact candidate assets
-      env:
-        VERSION: ${{ inputs.version }}
-        CHANNEL: ${{ inputs.channel }}
-      run: bash scripts/package-release.sh "$VERSION" "$CHANNEL"
-    - name: Verify all artifact checksums
-      working-directory: release-dist
-      run: sha256sum --check SHA256SUMS
-    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-      with:
-        name: release-assets
-        path: release-dist/*
-        if-no-files-found: error
-        retention-days: 14
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Install Ubuntu-signed local image transport
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes skopeo
+      - name: Build and smoke the exact native OCI image
+        env:
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          PRODUCT: ${{ matrix.product }}
+          ARCH: ${{ matrix.arch }}
+        run: >-
+          python3 scripts/native_containers.py build --version "$VERSION" --channel "$CHANNEL"
+          --product "$PRODUCT" --arch "$ARCH" --output native-output
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-cell-${{ matrix.product }}-${{ matrix.arch }}-attempt-${{ github.run_attempt }}
+          path: native-output/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+  package:
+    name: Assemble checked native assets
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: native-cell-rag-amd64-attempt-${{ github.run_attempt }}
+          path: native-inputs/rag-amd64
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: native-cell-rag-arm64-attempt-${{ github.run_attempt }}
+          path: native-inputs/rag-arm64
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: native-cell-fcc-amd64-attempt-${{ github.run_attempt }}
+          path: native-inputs/fcc-amd64
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: native-cell-fcc-arm64-attempt-${{ github.run_attempt }}
+          path: native-inputs/fcc-arm64
+      - name: Assemble exact candidate assets without rebuilding
+        env:
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+        run: >-
+          python3 scripts/native_containers.py assemble --version "$VERSION" --channel "$CHANNEL"
+          --inputs native-inputs --output release-dist
+      - name: Verify all artifact checksums
+        working-directory: release-dist
+        run: sha256sum --check SHA256SUMS
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-assets-attempt-${{ github.run_attempt }}
+          path: release-dist/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

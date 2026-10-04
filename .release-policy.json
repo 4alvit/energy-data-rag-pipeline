@@ -7,7 +7,8 @@
     "ci.yml",
     "codeql.yml",
     "release-security.yml",
-    "dependency-review.yml"
+    "dependency-review.yml",
+    "native-validation.yml"
   ],
   "artifact_pattern": "release-assets*",
   "version_file": "version",
