@@ -8,7 +8,10 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: api
@@ -36,7 +39,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
-          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:432037c87980b1a468e8462686b946896f022863f6195632e89cade182b36559
+          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:7c5455bfe5f6975cd8385f1442d784d5d93ad6c3a7d3de142ead0f701ddc5f9d
           ports:
             - containerPort: 8000
               name: http
