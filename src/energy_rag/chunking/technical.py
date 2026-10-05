@@ -1,6 +1,7 @@
 """Technical documentation chunking strategies."""
 
 import logging
+from collections.abc import Iterable
 from typing import Any, ClassVar
 
 from langchain_core.documents import Document
@@ -48,11 +49,13 @@ class TechnicalChunker:
             separators=["\n\n", "\n", ". ", " ", ""],
         )
 
-    def chunk_documents(self, documents: list[Document]) -> list[Document]:
-        """Chunk documents using markdown-aware splitting with fallback."""
+    def chunk_documents(self, documents: Iterable[Document]) -> list[Document]:
+        """Consume loader documents once, using markdown splitting with fallback."""
         chunked = []
+        document_count = 0
 
         for doc in documents:
+            document_count += 1
             # Try markdown header splitting first
             try:
                 header_chunks = self.header_splitter.split_text(doc.page_content)
@@ -79,7 +82,7 @@ class TechnicalChunker:
                     )
                 )
 
-        logger.info("Chunked %d documents into %d chunks", len(documents), len(chunked))
+        logger.info("Chunked %d documents into %d chunks", document_count, len(chunked))
         return chunked
 
     def _create_chunk(self, original_doc: Document, chunk: Document) -> Document:
@@ -117,13 +120,20 @@ class _SplitterAdapter:
     def __init__(self, splitter: Any) -> None:
         self._splitter = splitter
 
-    def chunk_documents(self, documents: list[Document]) -> list[Document]:
+    def chunk_documents(self, documents: Iterable[Document]) -> list[Document]:
+        """Split iterable input while retaining each source's citation metadata."""
         if hasattr(self._splitter, "split_documents"):
             return list(self._splitter.split_documents(documents))
         # Text-only splitters (e.g. MarkdownHeaderTextSplitter): keep metadata.
         chunks: list[Document] = []
         for doc in documents:
-            chunks.extend(self._splitter.split_text(doc.page_content))
+            for chunk in self._splitter.split_text(doc.page_content):
+                chunks.append(
+                    Document(
+                        page_content=chunk.page_content,
+                        metadata={**doc.metadata, **chunk.metadata},
+                    )
+                )
         return chunks
 
 

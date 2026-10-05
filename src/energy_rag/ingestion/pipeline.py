@@ -22,6 +22,20 @@ class IngestionPipeline:
     def __init__(self, chunker=None):
         self.chunker = chunker
 
+    def ingest_file(self, path: Path, source_type: str) -> Iterator[Document]:
+        """Load and chunk one source using the same path as directory ingestion."""
+        loaders = {
+            "pdf": load_victron_manual,
+            "forum_html": load_forum_html,
+            "forum_json": load_forum_json,
+        }
+        if source_type not in loaders:
+            raise ValueError(f"Unknown source type: {source_type}")
+        documents = loaders[source_type](path)
+        if self.chunker:
+            documents = self.chunker.chunk_documents(documents)
+        yield from documents
+
     def ingest_pdf_directory(self, directory: Path, recursive: bool = True) -> Iterator[Document]:
         """Ingest all PDF files from a directory."""
         pattern = "**/*.pdf" if recursive else "*.pdf"
@@ -32,16 +46,11 @@ class IngestionPipeline:
         for pdf_file in pdf_files:
             try:
                 logger.info("Processing %s", pdf_file)
-                documents = load_victron_manual(pdf_file)
-
-                if self.chunker:
-                    documents = self.chunker.chunk_documents(documents)
-
-                yield from documents
+                yield from self.ingest_file(pdf_file, "pdf")
 
             except Exception as e:
                 logger.error("Failed to process %s: %s", pdf_file, e)
-                continue
+                raise
 
     def ingest_forum_html_directory(
         self, directory: Path, recursive: bool = True
@@ -55,16 +64,11 @@ class IngestionPipeline:
         for html_file in html_files:
             try:
                 logger.info("Processing %s", html_file)
-                documents = load_forum_html(html_file)
-
-                if self.chunker:
-                    documents = self.chunker.chunk_documents(documents)
-
-                yield from documents
+                yield from self.ingest_file(html_file, "forum_html")
 
             except Exception as e:
                 logger.error("Failed to process %s: %s", html_file, e)
-                continue
+                raise
 
     def ingest_forum_json_directory(
         self, directory: Path, recursive: bool = True
@@ -78,16 +82,11 @@ class IngestionPipeline:
         for json_file in json_files:
             try:
                 logger.info("Processing %s", json_file)
-                documents = load_forum_json(json_file)
-
-                if self.chunker:
-                    documents = self.chunker.chunk_documents(documents)
-
-                yield from documents
+                yield from self.ingest_file(json_file, "forum_json")
 
             except Exception as e:
                 logger.error("Failed to process %s: %s", json_file, e)
-                continue
+                raise
 
     def ingest_victron_community_export(self, export_dir: Path) -> Iterator[Document]:
         """Ingest Victron community Discourse export."""
@@ -103,6 +102,7 @@ class IngestionPipeline:
 
         except Exception as e:
             logger.error("Failed to process community export: %s", e)
+            raise
 
     def ingest_mixed_directory(self, directory: Path, recursive: bool = True) -> Iterator[Document]:
         """Ingest all supported file types from a directory."""

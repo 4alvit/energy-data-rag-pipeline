@@ -32,6 +32,14 @@ _INSERT_BATCH_SIZE = 5000
 
 async def _stored_sources(session) -> set[str]:
     """Source paths already present in the vector store (for idempotent re-ingest)."""
+    # Async PGVector creates its tables on its first store/search operation.
+    # A fresh database has no stored sources yet; querying the missing table
+    # would abort this transaction before the first insertion can initialize it.
+    table = await session.scalar(
+        text("SELECT to_regclass(:table_name)"), {"table_name": _EMBEDDING_TABLE}
+    )
+    if table is None:
+        return set()
     rows = await session.execute(
         text(
             f"select distinct cmetadata->>'source' from {_EMBEDDING_TABLE} where cmetadata ? 'source'"
@@ -46,27 +54,18 @@ def _fresh_documents(documents: list[Document], stored_sources: set[str]) -> lis
 
 
 def _load_documents(pipeline, source_type: str, path: Path, recursive: bool) -> list[Document]:
-    """Load documents from path according to source type."""
-    if source_type == "pdf":
-        if path.is_dir():
-            return list(pipeline.ingest_pdf_directory(path, recursive))
-        from energy_rag.ingestion.pdf_loader import load_victron_manual
+    """Load and chunk a file or directory according to source type."""
+    if not path.is_dir():
+        return list(pipeline.ingest_file(path, source_type))
 
-        return list(load_victron_manual(path))
+    if source_type == "pdf":
+        return list(pipeline.ingest_pdf_directory(path, recursive))
 
     if source_type == "forum_html":
-        if path.is_dir():
-            return list(pipeline.ingest_forum_html_directory(path))
-        from energy_rag.ingestion.forum_loader import load_forum_html
-
-        return list(load_forum_html(path))
+        return list(pipeline.ingest_forum_html_directory(path, recursive))
 
     if source_type == "forum_json":
-        if path.is_dir():
-            return list(pipeline.ingest_forum_json_directory(path))
-        from energy_rag.ingestion.forum_loader import load_forum_json
-
-        return list(load_forum_json(path))
+        return list(pipeline.ingest_forum_json_directory(path, recursive))
 
     raise ValueError(f"Unknown source type: {source_type}")
 
