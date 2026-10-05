@@ -7,6 +7,8 @@ metadata:
     app: mcp
 spec:
   replicas: 1
+  # Include scheduling time in addition to the bounded startup probe.
+  progressDeadlineSeconds: 900
   selector:
     matchLabels:
       app: mcp
