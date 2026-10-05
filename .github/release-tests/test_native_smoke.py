@@ -30,6 +30,8 @@ class NativeSmokeTest(unittest.TestCase):
             mock.patch.object(smoke.platform, "system", return_value="Linux"),
             mock.patch.object(smoke.platform, "machine", return_value="aarch64"),
             mock.patch.object(smoke.os, "getuid", return_value=1000),
+            mock.patch.object(smoke.os, "access", return_value=False) as access,
+            mock.patch.object(smoke, "verify_packaged_bytecode") as bytecode,
             mock.patch.object(smoke.importlib.metadata, "version", return_value="9.8.7"),
             mock.patch.object(smoke.importlib.metadata, "entry_points", return_value=entries),
             mock.patch.object(importlib.metadata.EntryPoint, "load", return_value=lambda: None),
@@ -46,6 +48,8 @@ class NativeSmokeTest(unittest.TestCase):
             contextlib.redirect_stdout(output),
         ):
             smoke.main()
+        access.assert_called_once_with("/app/src", smoke.os.W_OK)
+        bytecode.assert_called_once_with()
         self.assertEqual(
             json.loads(output.getvalue()),
             {

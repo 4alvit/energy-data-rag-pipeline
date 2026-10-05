@@ -25,6 +25,12 @@ Both images run as their default non-root user with networking disabled:
   `/health/live` and `/openapi.json` through its real Uvicorn application with
   lifespan disabled. This checks image packaging and HTTP startup, not database,
   model download or inference readiness. Existing CI still exercises PostgreSQL.
+  The RAG smoke container has a read-only root filesystem and writable temporary
+  storage. It verifies checked-hash bytecode for representative heavy dependencies
+  and the API against the running interpreter and exact packaged source before
+  imports. Bytecode is compiled in a separate final image layer to move source
+  compilation off the deployment node without changing model initialization or
+  readiness semantics; cold startup must still pass target-side RC acceptance.
 - FCC starts its real default `fcc-server` command and lifespan, checks its console
   version and waits for `/health`. This does not exercise an external LLM provider.
 

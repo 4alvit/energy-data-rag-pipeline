@@ -2,6 +2,7 @@
 
 import importlib
 import importlib.metadata
+import importlib.util
 import json
 import os
 import platform
@@ -11,12 +12,36 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 
 def require(condition, message):
     """Keep verification active even when Python assertions are disabled."""
     if not condition:
         raise ValueError(message)
+
+
+def verify_bytecode(source):
+    """Reject missing, incompatible, unchecked or stale precompiled module caches."""
+    cache = Path(importlib.util.cache_from_source(str(source)))
+    data = cache.read_bytes()
+    require(len(data) >= 16, "Truncated bytecode header")
+    require(data[:4] == importlib.util.MAGIC_NUMBER, "Bytecode interpreter differs")
+    require(int.from_bytes(data[4:8], "little") == 3, "Bytecode must use checked hashes")
+    require(data[8:16] == importlib.util.source_hash(source.read_bytes()), "Stale bytecode")
+
+
+def verify_packaged_bytecode():
+    """Check representative heavy dependencies and the application before importing."""
+    for distribution, relative in (
+        ("sentence-transformers", "sentence_transformers/__init__.py"),
+        ("sentence-transformers", "sentence_transformers/sparse_encoder/__init__.py"),
+        ("langchain-text-splitters", "langchain_text_splitters/__init__.py"),
+        ("transformers", "transformers/__init__.py"),
+    ):
+        source = Path(importlib.metadata.distribution(distribution).locate_file(relative))
+        verify_bytecode(source)
+    verify_bytecode(Path("/app/src/energy_rag/api/main.py"))
 
 
 def response(port, path):
@@ -41,6 +66,8 @@ def main():
             importlib.metadata.version("energy-rag-pipeline") == version,
             "Installed RAG version differs",
         )
+        require(not os.access("/app/src", os.W_OK), "RAG root filesystem must be read-only")
+        verify_packaged_bytecode()
         for name in ("torch", "numpy", "asyncpg", "pymupdf", "energy_rag.api.main"):
             importlib.import_module(name)
         entries = tuple(
