@@ -32,6 +32,14 @@ _INSERT_BATCH_SIZE = 5000
 
 async def _stored_sources(session) -> set[str]:
     """Source paths already present in the vector store (for idempotent re-ingest)."""
+    # Async PGVector creates its tables on its first store/search operation.
+    # A fresh database has no stored sources yet; querying the missing table
+    # would abort this transaction before the first insertion can initialize it.
+    table = await session.scalar(
+        text("SELECT to_regclass(:table_name)"), {"table_name": _EMBEDDING_TABLE}
+    )
+    if table is None:
+        return set()
     rows = await session.execute(
         text(
             f"select distinct cmetadata->>'source' from {_EMBEDDING_TABLE} where cmetadata ? 'source'"
