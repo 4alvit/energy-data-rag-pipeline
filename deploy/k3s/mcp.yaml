@@ -7,6 +7,8 @@ metadata:
     app: mcp
 spec:
   replicas: 1
+  # Include scheduling time in addition to the bounded startup probe.
+  progressDeadlineSeconds: 900
   selector:
     matchLabels:
       app: mcp
@@ -15,6 +17,9 @@ spec:
       labels:
         app: mcp
     spec:
+      # The descheduler must not evict this MP service to an ineligible node.
+      nodeSelector:
+        kubernetes.io/hostname: mp
       enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
@@ -32,7 +37,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
-          image: ghcr.io/4alvit/energy-data-rag-pipeline:latest
+          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:3a653ea52bf28ee2a5cd351e7270ee6595d0129f9c79098aca1bcd14eeae54dc
           args:
             - energy-rag-mcp
             - --transport
@@ -64,6 +69,13 @@ spec:
               memory: 128Mi
             limits:
               memory: 512Mi
+          # Cold startup measured about four minutes on the contended MP node.
+          startupProbe:
+            tcpSocket:
+              port: 8800
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             tcpSocket:
               port: 8800

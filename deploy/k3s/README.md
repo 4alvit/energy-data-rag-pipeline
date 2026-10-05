@@ -158,3 +158,21 @@ root filesystem. Registration was stubbed and networking disabled for this check
 it did not register or replace the live runner. Production registration and a real
 profile job must be checked during the separately approved deployment. Drain the
 existing runner before applying this manifest; this change does not deploy it.
+
+## API and MCP availability on MP
+
+The API and MCP deployments keep one steady-state replica on `mp`. The API
+uses a rolling update with one temporary extra pod and no unavailable replicas,
+so the current API remains available while its replacement loads the model.
+Both services use the same verified immutable image digest.
+
+MCP also declares the MP node selector. The cluster descheduler uses `nodeFit`,
+so it can no longer evict this service repeatedly when no other eligible node
+exists. This fixes the observed five-minute eviction loop without changing the
+cluster-wide policy.
+
+A cold MCP start took about four minutes under observed MP contention. Its
+startup probe allows up to ten minutes for port 8800 to bind before the existing
+liveness and readiness checks take over. A TCP probe is only a startup signal:
+validate the deployment with a real MCP initialize, tool listing, and `rag_health`
+call; verify retrieval against known sources before treating a rollout as ready.

@@ -7,8 +7,13 @@ metadata:
     app: api
 spec:
   replicas: 1
+  # Include scheduling time in addition to the bounded startup probe.
+  progressDeadlineSeconds: 1200
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: api
@@ -36,7 +41,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
-          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:432037c87980b1a468e8462686b946896f022863f6195632e89cade182b36559
+          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:3a653ea52bf28ee2a5cd351e7270ee6595d0129f9c79098aca1bcd14eeae54dc
           ports:
             - containerPort: 8000
               name: http
