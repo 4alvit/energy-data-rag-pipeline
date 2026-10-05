@@ -37,7 +37,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
-          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:7c5455bfe5f6975cd8385f1442d784d5d93ad6c3a7d3de142ead0f701ddc5f9d
+          image: ghcr.io/4alvit/energy-data-rag-pipeline@sha256:3a653ea52bf28ee2a5cd351e7270ee6595d0129f9c79098aca1bcd14eeae54dc
           args:
             - energy-rag-mcp
             - --transport
