@@ -15,6 +15,9 @@ spec:
       labels:
         app: mcp
     spec:
+      # The descheduler must not evict this MP service to an ineligible node.
+      nodeSelector:
+        kubernetes.io/hostname: mp
       enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
@@ -64,6 +67,13 @@ spec:
               memory: 128Mi
             limits:
               memory: 512Mi
+          # Cold startup measured about four minutes on the contended MP node.
+          startupProbe:
+            tcpSocket:
+              port: 8800
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           readinessProbe:
             tcpSocket:
               port: 8800
