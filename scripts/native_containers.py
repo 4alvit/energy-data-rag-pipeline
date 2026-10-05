@@ -175,6 +175,8 @@ def smoke(root, archive, product, arch, expected, checked, endpoint):
     ]
     if product == "rag":
         launch += [
+            "--read-only",
+            "--tmpfs=/tmp:rw,noexec,nosuid,size=32m",
             "--entrypoint=python",
             tag,
             "-m",

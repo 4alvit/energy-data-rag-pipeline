@@ -53,6 +53,12 @@ ENV HF_HOME=/app/.cache/huggingface \
 
 RUN mkdir -p /app/.cache && chown -R appuser:appuser /app/.cache
 
+# Compile a separate final layer so read-only deployments do not parse the
+# dependency source graph on every cold start. Checked hashes remain valid
+# after OCI timestamp normalization and reject bytecode for changed sources.
+RUN /app/.venv/bin/python -m compileall -f --invalidation-mode checked-hash -q \
+    /app/.venv/lib /app/src
+
 # Switch to non-root user
 USER appuser
 
