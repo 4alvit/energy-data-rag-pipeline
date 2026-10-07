@@ -190,7 +190,9 @@ class NativeValidationTest(unittest.TestCase):
         self.assertEqual(jobs["build"]["uses"], "./.github/workflows/release-build.yml")
         self.assertEqual(set(jobs["gate"]["needs"]), {"prepare", "checks", "build"})
         self.assertIn("gate", jobs["candidate"]["needs"])
-        gate_script = jobs["gate"]["steps"][0]["run"]
+        gate_steps = [step for step in jobs["gate"]["steps"] if "run" in step]
+        self.assertEqual(len(gate_steps), 1)
+        gate_script = gate_steps[0]["run"]
         self.assertIn("dict.fromkeys(('prepare', 'checks', 'build'), 'success')", gate_script)
         self.assertIn("raise SystemExit", gate_script)
 
