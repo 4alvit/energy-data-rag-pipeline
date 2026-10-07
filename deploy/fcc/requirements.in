@@ -40,7 +40,7 @@ loguru==0.7.3
 markdown-it-py==4.2.0
 markupsafe==3.0.3
 mdurl==0.1.2
-multidict==6.7.1
+multidict==6.9.1
 openai==3.3.0
 pillow==12.3.0 ; sys_platform == 'darwin' or sys_platform == 'win32'
 propcache==0.4.1
