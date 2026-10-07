@@ -25,7 +25,6 @@ import json
 import re
 import sys
 import time
-import unicodedata
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -106,11 +105,6 @@ def _page_text(url: str) -> str:
     # safe here because URLs we extract are ASCII.
     txt += re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), raw)
     return html.unescape(txt)
-
-
-def _strip_tags(fragment: str) -> str:
-    text = re.sub(r"<[^>]+>", "", fragment or "")
-    return html.unescape(unicodedata.normalize("NFKC", text)).strip()
 
 
 def discover_manual_urls() -> list[str]:
