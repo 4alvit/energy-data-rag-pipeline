@@ -56,7 +56,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --all-extras
       - name: Wait for PostgreSQL
-        run: "for i in {1..30}; do\n  pg_isready -h localhost -p 5432 -U rag -d energy_rag_test && break\n  sleep 2\ndone\npg_isready -h localhost -p 5432 -U rag -d energy_rag_test\n"
+        run: "for _ in {1..30}; do\n  pg_isready -h localhost -p 5432 -U rag -d energy_rag_test && break\n  sleep 2\ndone\npg_isready -h localhost -p 5432 -U rag -d energy_rag_test\n"
       - name: Run database migrations
         run: 'PGPASSWORD=testpass psql -v ON_ERROR_STOP=1 -h localhost -U rag -d energy_rag_test -f sql/init.sql
 
