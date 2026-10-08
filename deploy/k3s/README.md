@@ -176,3 +176,22 @@ startup probe allows up to ten minutes for port 8800 to bind before the existing
 liveness and readiness checks take over. A TCP probe is only a startup signal:
 validate the deployment with a real MCP initialize, tool listing, and `rag_health`
 call; verify retrieval against known sources before treating a rollout as ready.
+
+## API cold-start allowance on MP
+
+The October 8 guest reboot exposed a healthy cold initialization taking about
+18 minutes under shared CPU contention. Its nominal 15-minute startup probe
+terminated the process just as initialization completed. The API now allows
+30 minutes (180 TCP probe failures at ten-second intervals), with a 35-minute
+Deployment progress deadline to include scheduling and container creation.
+
+The image, CPU and memory policy, cache, data PVC, and ordinary readiness/liveness
+checks are unchanged. This allowance does not make startup faster or declare an
+unavailable model/database healthy. Weight-loading progress alone is not proof
+of a network download. After applying the reviewed API change, wait for rollout
+with `--timeout=2100s`, then verify `/health` and `/health/ready` through the Service
+and confirm the intended pod is Ready without restarts.
+
+The h7-to-MP cutover helper and its original 15-minute settings are historical
+migration tooling. Do not rerun that cutover or erase its guards to update a
+running deployment; use the current manifest or a reviewed narrow live patch.
