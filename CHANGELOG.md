@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11]
+
+### Changed
+
+Preserve streaming document ingestion and report failed documents instead of silently completing. Check for a vector collection before querying it on the first import, so lazy vector-table creation does not break initial ingestion. Add contributor, security and OpenSSF evidence documentation and source-bound human release notes.
+
+### Upgrade
+
+Keep existing PostgreSQL/pgvector data and use the documented integration-test environment before rollout. The first-ingestion fix does not require deleting collections or re-embedding existing documents. Review failed-document results and retry the affected source after fixing its input.
+
+### Security
+
+Retain the pinned FCC source and hash-locked runtime/build dependencies. This update does not claim a new application vulnerability fix; it validates release change notes against the exact packaged source and requires explicit upgrade/security guidance.
+
 ## [0.2.10] - 2026-10-04
 
 ### Changed

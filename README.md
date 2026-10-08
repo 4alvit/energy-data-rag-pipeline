@@ -304,3 +304,10 @@ graph TD
 ## License
 
 MIT
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development, bug reports and proposals,
+[SECURITY.md](SECURITY.md) for confidential vulnerability reports and deployment
+boundaries, and the [OpenSSF evidence index](docs/openssf-evidence.md) for assessment
+scope and verification.
