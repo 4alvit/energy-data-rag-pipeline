@@ -11,8 +11,8 @@ from energy_rag.mcp_server import RagApiClient, _format_sources, create_mcp_serv
 def test_rag_api_client_health_parses_response():
     client = RagApiClient("http://api.test")
 
-    with patch("urllib.request.urlopen") as mock_urlopen:
-        mock_urlopen.return_value.__enter__.return_value.read.return_value = (
+    with patch("energy_rag.mcp_server.https_opener") as mock_opener:
+        mock_opener.return_value.open.return_value.__enter__.return_value.read.return_value = (
             b'{"status": "healthy"}'
         )
         result = client.health()

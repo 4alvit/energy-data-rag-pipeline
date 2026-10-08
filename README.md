@@ -84,7 +84,7 @@ curl -X POST http://localhost:8000/ingest \
 ### Feed real Victron content to the RAG
 
 ```bash
-python3 scripts/fetch_victron_content.py --out data   # official PDF manuals + community forum export
+uv run --locked python scripts/fetch_victron_content.py --out data   # official PDF manuals + community forum export
 python3 scripts/export_projects_corpus.py             # sibling ~/victron repos -> data/projects/corpus.json
 ```
 
