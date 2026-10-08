@@ -25,5 +25,6 @@
     "energy-rag-fcc-container.oci.tar": "ghcr.io/4alvit/free-claude-code"
   },
   "visibility": "public",
-  "single_entry_ci": true
+  "single_entry_ci": true,
+  "release_notes": "CHANGELOG.md"
 }
