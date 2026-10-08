@@ -12,3 +12,13 @@ Include the affected version or commit, steps to reproduce, expected and actual
 behavior, and potential impact. Remove access tokens, credentials and personal
 data from examples. Do not disclose exploit details in public issues before
 coordinating with the maintainers.
+
+## Support and response
+
+Security fixes target the current default branch and the latest maintained release, where releases exist. Older versions are not promised backports. Maintainers aim to acknowledge private reports within 14 days, investigate and communicate status within 60 days, and coordinate disclosure with the reporter. Confirmed vulnerabilities with a practical fix receive priority over feature work; publish an advisory and release notes that identify affected versions, mitigation and the fixed version. If a fix takes longer, keep the reporter informed without exposing confidential details.
+
+## Deployment trust boundaries
+
+Downloaded documents, upload contents, source URLs and model outputs are untrusted. Preserve fetch/path/input limits and citation provenance. The service configuration includes local-development database defaults; replace these with private credentials and put the API/database behind trusted access controls before external exposure. Do not assume generated answers are authoritative or execute instructions embedded in retrieved documents. Protect provider keys and any non-public ingested material.
+
+Use synthetic data for testing. Never attach live tokens, private keys, database exports or household telemetry to public CI artifacts. Report a suspected credential exposure privately and revoke the credential through its issuer. See [CONTRIBUTING.md](CONTRIBUTING.md) for validation and [the evidence index](docs/openssf-evidence.md) for assessment limits.
