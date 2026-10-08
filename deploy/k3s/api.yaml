@@ -8,7 +8,7 @@ metadata:
 spec:
   replicas: 1
   # Include scheduling time in addition to the bounded startup probe.
-  progressDeadlineSeconds: 1200
+  progressDeadlineSeconds: 2100
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -86,7 +86,7 @@ spec:
               port: 8000
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 90
+            failureThreshold: 180
           readinessProbe:
             tcpSocket:
               port: 8000

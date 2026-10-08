@@ -5,6 +5,11 @@ the entire kustomization: the live installation predates other hardening changes
 in Git. Minimal JSON patches preserve all unrelated live container settings.
 MCP, FCC, the runner, Secrets, and Services are not changed by this procedure.
 
+> Historical cutover record: the API startup settings below describe the original
+> migration. The current [API cold-start allowance](../README.md#api-cold-start-allowance-on-mp)
+> supersedes its 15-minute probe. Do not rerun the migration helper to update an
+> already migrated installation.
+
 ## Storage and consistency
 
 - API `/data` moves to `energy-rag-data-nfs-v1`, subdirectory `data`, on Synology.
