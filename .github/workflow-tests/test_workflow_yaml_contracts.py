@@ -160,7 +160,10 @@ class CoverageProducerIdentityTests(unittest.TestCase):
         )
         for reference in references:
             producer = {"uses": reference, "with": {"coverage-artifact-name": self.artifact}}
-            with self.subTest(reference=reference), self.assertRaisesRegex(ValueError, "producer pin"):
+            with (
+                self.subTest(reference=reference),
+                self.assertRaisesRegex(ValueError, "producer pin"),
+            ):
                 CONTRACTS.validate_coverage_producer(producer, self.report, self.ref)
 
     def test_custom_export_requires_the_upload_action_and_immutable_pin(self):
@@ -178,10 +181,15 @@ class CoverageProducerIdentityTests(unittest.TestCase):
             "actions/upload-artifact@" + "b" * 39,
             "actions/upload-artifact@" + "b" * 40 + "suffix",
         ):
-            changed = {**step, "uses": reference} if reference is not None else {
-                key: value for key, value in step.items() if key != "uses"
-            }
-            with self.subTest(reference=reference), self.assertRaisesRegex(ValueError, "producer export"):
+            changed = (
+                {**step, "uses": reference}
+                if reference is not None
+                else {key: value for key, value in step.items() if key != "uses"}
+            )
+            with (
+                self.subTest(reference=reference),
+                self.assertRaisesRegex(ValueError, "producer export"),
+            ):
                 CONTRACTS.validate_coverage_producer({"steps": [changed]}, self.report, self.ref)
 
     def test_lcov_has_no_shared_language_producer(self):
