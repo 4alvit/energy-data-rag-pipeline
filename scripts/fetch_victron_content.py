@@ -88,8 +88,11 @@ MANUAL_INCLUDE = re.compile(r"-pdf-en\.pdf$|manual", re.IGNORECASE)
 
 
 def _get(url: str, timeout: int = 60) -> bytes:
+    # Run in the environment where this project is installed, as documented.
+    from energy_rag.tls_policy import https_opener
+
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with https_opener().open(req, timeout=timeout) as resp:
         return resp.read()
 
 

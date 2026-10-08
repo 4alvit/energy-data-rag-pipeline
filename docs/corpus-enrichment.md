@@ -19,16 +19,18 @@ the site sitemap.
 
 ## From-zero runbook
 
-Assumes a fresh machine with this repo cloned.
+Assumes this repo is cloned and its locked project environment is installed
+with `uv sync --locked`. Activate `.venv` before the deployment helper is used
+with `--with-manuals`; its content fetcher imports the installed TLS policy.
 
 ### 1. Fetch content locally
 
 ```bash
-python3 scripts/fetch_victron_content.py --out data
+uv run --locked python scripts/fetch_victron_content.py --out data
 python3 scripts/export_projects_corpus.py            # sibling repos -> data/projects/corpus.json
 # or parts:
-python3 scripts/fetch_victron_content.py --out data --manuals-only
-python3 scripts/fetch_victron_content.py --out data --community-only
+uv run --locked python scripts/fetch_victron_content.py --out data --manuals-only
+uv run --locked python scripts/fetch_victron_content.py --out data --community-only
 ```
 
 Idempotent: files that already exist are skipped, so re-running picks up only

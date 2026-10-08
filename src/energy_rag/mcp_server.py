@@ -15,6 +15,8 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+from .tls_policy import https_opener
+
 logger = logging.getLogger("energy_rag.mcp_server")
 
 DEFAULT_API_URL = "http://localhost:8000"
@@ -22,7 +24,7 @@ HTTP_TIMEOUT = 120.0
 
 
 class RagApiClient:
-    """Minimal synchronous HTTP client for the RAG API (stdlib only)."""
+    """Minimal synchronous HTTP client with verified HTTPS for the RAG API."""
 
     def __init__(self, base_url: str = DEFAULT_API_URL):
         self.base_url = base_url.rstrip("/")
@@ -37,7 +39,7 @@ class RagApiClient:
             headers={"Content-Type": "application/json"},
         )
         try:
-            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            with https_opener().open(req, timeout=HTTP_TIMEOUT) as resp:
                 body = resp.read().decode()
             return json.loads(body) if body else {}
         except urllib.error.HTTPError as exc:
