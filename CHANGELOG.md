@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.12]
+
+### Changed
+
+Give FCC a bounded startup grace period before liveness checks begin, so slow initialization does not cause a restart loop. Open the next beta series after stable 0.2.11, including the TLS, dependency and release-verification improvements added since that release.
+
+### Upgrade
+
+Preserve PostgreSQL/pgvector data and existing broker and certificate settings. The FCC deployment permits up to ten minutes for startup and retains liveness checks after initialization. Publishing this beta does not apply the deployment manifests or migrate stored data.
+
+### Security
+
+Keep the pinned FCC source, hash-locked dependencies and required native AMD64/ARM64 checks. No verification or container security setting is relaxed by the startup grace period.
+
 ## [0.2.11]
 
 ### Changed
