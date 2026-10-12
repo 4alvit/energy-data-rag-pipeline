@@ -28,7 +28,7 @@ RAG (Retrieval-Augmented Generation) pipeline for Victron Energy documentation a
   proxy — no paid Anthropic plan or local Ollama required
   ([client setup](docs/mcp-integration.md#free-claude-code-fcc--claude-code-without-a-paid-plan),
   [LLM backend](docs/configuration.md#free-llm-via-free-claude-code-fcc))
-- **Multi-Arch Images**: linux/amd64 + linux/arm64 on GHCR for every release
+- **Multi-Arch Images**: linux/amd64 + linux/arm64 OCI artifacts in GitHub releases; GHCR publication is a separate verified promotion
 - **Synology Deployment**: one-command deploys via gitignored `deploy/deploy.sh`
   ([docs](docs/deployment-synology.md))
 - **Docker Compose**: PostgreSQL + pgvector + API + MCP in one stack
@@ -43,18 +43,31 @@ The [k3s migration runbook](deploy/k3s/migration/README.md) covers the guarded
 h7-to-mp API/PostgreSQL move, retained rollback volumes, and daily NAS logical
 backups. Follow that procedure before applying the changed storage manifests.
 
+## Installation channel
+
+Use a reviewed [GitHub release](https://github.com/4alvit/energy-data-rag-pipeline/releases)
+or a source checkout pinned to its tag. As of 12 October 2026, stable is
+`v0.2.11`; `energy-rag-pipeline` is the Python project name, but no distribution
+with that name is published on PyPI. `pip install energy-rag-pipeline` is not a
+supported installation command.
+
+GitHub releases include a source archive and RAG/FCC OCI artifacts with
+`SHA256SUMS` and `release-manifest.json`. They do not automatically publish GHCR
+images or deploy services. See [release and image operations](docs/release-and-images.md).
+
 ## Quickstart
 
 ```bash
-# Clone and enter
+# Clone the explicit stable source release and enter
+git clone --branch v0.2.11 --depth 1 https://github.com/4alvit/energy-data-rag-pipeline.git
 cd energy-data-rag-pipeline
 
 # Copy env template
 cp .env.example .env
 # Edit .env with your settings
 
-# Start services (postgres + api + mcp)
-docker compose up -d
+# Build the selected source and start services (postgres + api + mcp)
+docker compose up -d --build
 
 # Verify health
 curl http://localhost:8000/health
@@ -74,12 +87,15 @@ curl -X POST http://localhost:8000/query \
 
 ```bash
 python3 scripts/export_docs_corpus.py     # builds docs-corpus/corpus.json
+mkdir -p data/docs-corpus
+cp docs-corpus/corpus.json data/docs-corpus/corpus.json
 curl -X POST http://localhost:8000/ingest \
   -H "Content-Type: application/json" \
   -d '{"source_type": "forum_json", "paths": ["/data/docs-corpus/corpus.json"], "chunk_strategy": "recursive"}'
 ```
 
-(`./data` is mounted at `/data` inside the api container.)
+Run these commands from the repository root. The copy stages the freshly exported
+corpus under `./data`, which is mounted at `/data` inside the api container.
 
 ### Feed real Victron content to the RAG
 
@@ -196,20 +212,23 @@ Query the RAG system.
 }
 ```
 
-**Response:**
+**Example response** (illustrative content and timing):
 ```json
 {
-  "answer": "To configure ESS grid-zero on MultiPlus-II...",
+  "answer": "To configure ESS grid-zero on MultiPlus-II... [doc_1]",
   "sources": [
     {
+      "index": 1,
       "content": "ESS Grid-zero configuration...",
-      "metadata": {"product": "MultiPlus-II", "section": "ESS", "page": 42},
-      "score": 0.92
+      "metadata": {"product": "MultiPlus-II", "section_title": "ESS", "page_number": 42}
     }
   ],
   "processing_time_ms": 245
 }
 ```
+
+`sources` contains the cited documents; the API does not return a confidence
+score. See the [API reference](docs/api-reference.md) for the response contract.
 
 ### `POST /ingest`
 Trigger document ingestion.
