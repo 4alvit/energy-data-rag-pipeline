@@ -1,13 +1,16 @@
 # Documentation Corpus (generated)
 
-Generated: 2026-10-08T17:57:36+00:00
-Records: 161 (~73,043 chars)
+Generated: 2026-10-12T20:52:16+00:00
+Records: 162 (~74,205 chars)
 
 Produced by `scripts/export_docs_corpus.py` from `docs/*.md` and `README.md`.
 
-Ingest into the RAG stack:
+From the repository root, stage the export under `./data` (mounted at
+`/data` in the Compose API container), then ingest into the RAG stack:
 
 ```bash
+mkdir -p data/docs-corpus
+cp docs-corpus/corpus.json data/docs-corpus/corpus.json
 curl -X POST http://localhost:8000/ingest \
   -H 'Content-Type: application/json' \
   -d '{"source_type":"forum_json","paths":["/data/docs-corpus/corpus.json"],
