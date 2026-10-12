@@ -87,12 +87,15 @@ curl -X POST http://localhost:8000/query \
 
 ```bash
 python3 scripts/export_docs_corpus.py     # builds docs-corpus/corpus.json
+mkdir -p data/docs-corpus
+cp docs-corpus/corpus.json data/docs-corpus/corpus.json
 curl -X POST http://localhost:8000/ingest \
   -H "Content-Type: application/json" \
   -d '{"source_type": "forum_json", "paths": ["/data/docs-corpus/corpus.json"], "chunk_strategy": "recursive"}'
 ```
 
-(`./data` is mounted at `/data` inside the api container.)
+Run these commands from the repository root. The copy stages the freshly exported
+corpus under `./data`, which is mounted at `/data` inside the api container.
 
 ### Feed real Victron content to the RAG
 
@@ -209,20 +212,23 @@ Query the RAG system.
 }
 ```
 
-**Response:**
+**Example response** (illustrative content and timing):
 ```json
 {
-  "answer": "To configure ESS grid-zero on MultiPlus-II...",
+  "answer": "To configure ESS grid-zero on MultiPlus-II... [doc_1]",
   "sources": [
     {
+      "index": 1,
       "content": "ESS Grid-zero configuration...",
-      "metadata": {"product": "MultiPlus-II", "section": "ESS", "page": 42},
-      "score": 0.92
+      "metadata": {"product": "MultiPlus-II", "section_title": "ESS", "page_number": 42}
     }
   ],
   "processing_time_ms": 245
 }
 ```
+
+`sources` contains the cited documents; the API does not return a confidence
+score. See the [API reference](docs/api-reference.md) for the response contract.
 
 ### `POST /ingest`
 Trigger document ingestion.
