@@ -1,7 +1,7 @@
 # Documentation Corpus (generated)
 
-Generated: 2026-10-08T17:57:36+00:00
-Records: 161 (~73,043 chars)
+Generated: 2026-10-12T19:11:57+00:00
+Records: 162 (~73,804 chars)
 
 Produced by `scripts/export_docs_corpus.py` from `docs/*.md` and `README.md`.
 
