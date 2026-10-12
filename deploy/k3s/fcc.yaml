@@ -11,6 +11,7 @@ metadata:
     app: fcc
 spec:
   replicas: 1
+  progressDeadlineSeconds: 900
   selector:
     matchLabels:
       app: fcc
@@ -89,16 +90,25 @@ spec:
               memory: 128Mi
             limits:
               memory: 512Mi
+          startupProbe:
+            tcpSocket:
+              port: 8082
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+            successThreshold: 1
           readinessProbe:
             tcpSocket:
               port: 8082
             initialDelaySeconds: 10
             periodSeconds: 15
+            timeoutSeconds: 5
           livenessProbe:
             tcpSocket:
               port: 8082
             initialDelaySeconds: 30
             periodSeconds: 30
+            timeoutSeconds: 5
       volumes:
         - name: tmp
           emptyDir: {}
