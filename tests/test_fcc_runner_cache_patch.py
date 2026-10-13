@@ -6,21 +6,47 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("fcc_cache", ROOT / "scripts/fcc_runner_cache_patch.py")
+SPEC = importlib.util.spec_from_file_location(
+    "fcc_cache", ROOT / "scripts/fcc_runner_cache_patch.py"
+)
 cache = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(cache)
 
 
 def original():
     return {
-        "metadata": {"name": "gha-runner-fcc", "namespace": "energy-rag", "uid": "same", "resourceVersion": "10"},
-        "spec": {"replicas": 1, "strategy": {"type": "Recreate"}, "template": {"spec": {
-            "nodeSelector": {"kubernetes.io/hostname": "mp"},
-            "containers": [{"name": "runner", "image": "unchanged", "resources": {"limits": {"cpu": "2"}},
-                            "env": [{"name": "ACCESS_TOKEN", "valueFrom": {"secretKeyRef": {"name": "private", "key": "token"}}}],
-                            "volumeMounts": [{"name": "work", "mountPath": "/runner/_work"}]}],
-            "volumes": [{"name": "work", "emptyDir": {}}],
-        }}},
+        "metadata": {
+            "name": "gha-runner-fcc",
+            "namespace": "energy-rag",
+            "uid": "same",
+            "resourceVersion": "10",
+        },
+        "spec": {
+            "replicas": 1,
+            "strategy": {"type": "Recreate"},
+            "template": {
+                "spec": {
+                    "nodeSelector": {"kubernetes.io/hostname": "mp"},
+                    "containers": [
+                        {
+                            "name": "runner",
+                            "image": "unchanged",
+                            "resources": {"limits": {"cpu": "2"}},
+                            "env": [
+                                {
+                                    "name": "ACCESS_TOKEN",
+                                    "valueFrom": {
+                                        "secretKeyRef": {"name": "private", "key": "token"}
+                                    },
+                                }
+                            ],
+                            "volumeMounts": [{"name": "work", "mountPath": "/runner/_work"}],
+                        }
+                    ],
+                    "volumes": [{"name": "work", "emptyDir": {}}],
+                }
+            },
+        },
     }
 
 
@@ -70,7 +96,9 @@ class RunnerCacheTests(unittest.TestCase):
             item = original()
             pod = item["spec"]["template"]["spec"]
             if kind == "mount":
-                pod["containers"][0]["volumeMounts"].append({"name": "foreign", "mountPath": "/runner-cache"})
+                pod["containers"][0]["volumeMounts"].append(
+                    {"name": "foreign", "mountPath": "/runner-cache"}
+                )
             elif kind == "volume":
                 pod["volumes"].append({"name": "toolcache", "hostPath": {"path": "/"}})
             elif kind == "replicas":
@@ -84,7 +112,9 @@ class RunnerCacheTests(unittest.TestCase):
 
     def test_updates_existing_cache_env_without_dropping_credentials(self):
         item = original()
-        item["spec"]["template"]["spec"]["containers"][0]["env"].append({"name": "PIP_CACHE_DIR", "value": "/root/.cache/pip"})
+        item["spec"]["template"]["spec"]["containers"][0]["env"].append(
+            {"name": "PIP_CACHE_DIR", "value": "/root/.cache/pip"}
+        )
         result = apply(item, cache.cache_patch(item))
         self.assertEqual(cache.cache_patch(result), [])
 

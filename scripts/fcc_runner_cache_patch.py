@@ -73,7 +73,9 @@ def cache_patch(deployment):
         expected = {"name": name, "value": value}
         if indexes:
             if environment[indexes[0]] != expected:
-                changes.append({"op": "replace", "path": base + f"/env/{indexes[0]}", "value": expected})
+                changes.append(
+                    {"op": "replace", "path": base + f"/env/{indexes[0]}", "value": expected}
+                )
         else:
             changes.append({"op": "add", "path": base + "/env/-", "value": expected})
     if not changes:
@@ -97,7 +99,15 @@ def main():
     with os.fdopen(fd, "w") as stream:
         json.dump(patch, stream, indent=2)
         stream.write("\n")
-    print(json.dumps({"patchCreated": True, "changeOperations": sum(p["op"] != "test" for p in patch), "rolloutPerformed": False}))
+    print(
+        json.dumps(
+            {
+                "patchCreated": True,
+                "changeOperations": sum(p["op"] != "test" for p in patch),
+                "rolloutPerformed": False,
+            }
+        )
+    )
 
 
 if __name__ == "__main__":
