@@ -65,8 +65,9 @@ run `python3 scripts/fcc_runner_cache_patch.py deployment.json cache.patch.json`
 The generated patch tests UID/resourceVersion, preserves the current image,
 security settings, resources, work volume, and credentials, and changes only the
 two cache volumes/mounts and five cache environment variables. No API calls or
-rollout are performed by the generator. Do not apply the full recovery manifest
-as a cache-only update.
+rollout are performed by the generator. The generator rejects cache volumes
+mounted at unrelated paths, including in sidecars and init containers. Do not
+apply the full recovery manifest as a cache-only update.
 
 Inspect all workflows targeting this listener, including dynamic labels from
 repository variables. Remove enough custom routing labels to prevent new jobs

@@ -40,6 +40,10 @@ def cache_patch(deployment):
     mounts = copy.deepcopy(container.get("volumeMounts", []))
     volumes = copy.deepcopy(pod.get("volumes", []))
     for name, path in MOUNTS.items():
+        for participant in [*pod["containers"], *pod.get("initContainers", [])]:
+            for mount in participant.get("volumeMounts", []):
+                if mount["name"] == name and mount["mountPath"] != path:
+                    raise ValueError(f"Cache volume {name} is mounted outside {path}")
         expected_mount = {"name": name, "mountPath": path}
         existing_mounts = [m for m in mounts if m["mountPath"] == path]
         if existing_mounts and existing_mounts != [expected_mount]:

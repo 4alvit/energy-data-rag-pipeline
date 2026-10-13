@@ -118,6 +118,25 @@ class RunnerCacheTests(unittest.TestCase):
         result = apply(item, cache.cache_patch(item))
         self.assertEqual(cache.cache_patch(result), [])
 
+    def test_cache_volume_aliases_are_rejected_without_changing_input(self):
+        for volume in cache.MOUNTS:
+            for location in ("runner", "sidecar", "init"):
+                item = original()
+                pod = item["spec"]["template"]["spec"]
+                mount = {"name": volume, "mountPath": "/unrelated-data"}
+                pod["volumes"].append({"name": volume, "emptyDir": {}})
+                if location == "runner":
+                    pod["containers"][0]["volumeMounts"].append(mount)
+                else:
+                    container = {"name": location, "volumeMounts": [mount]}
+                    key = "initContainers" if location == "init" else "containers"
+                    pod.setdefault(key, []).append(container)
+                saved = copy.deepcopy(item)
+                with self.subTest(volume=volume, location=location):
+                    with self.assertRaisesRegex(ValueError, "mounted outside"):
+                        cache.cache_patch(item)
+                    self.assertEqual(item, saved)
+
 
 if __name__ == "__main__":
     unittest.main()
