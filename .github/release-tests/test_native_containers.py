@@ -45,7 +45,9 @@ class NativeContainersTest(unittest.TestCase):
         self.output = self.root / "release-dist"
         self.inputs_digest = native.fingerprint(self.root, [])
 
-    def archive(self, arch, path, *, sbom=True, provenance=True, user="1000", padding=0):
+    def archive(
+        self, arch, path, *, sbom=True, provenance=True, user="1000", padding=0, config_padding=0
+    ):
         """Create content-addressed image + real bound attestation statements."""
         entries = {"oci-layout": b'{"imageLayoutVersion":"1.0.0"}'}
         blob = fixture.MergeTest.blob
@@ -67,6 +69,7 @@ class NativeContainersTest(unittest.TestCase):
                     "type": "layers",
                     "diff_ids": ["sha256:" + hashlib.sha256(layer_data).hexdigest()],
                 },
+                **({"padding": "x" * config_padding} if config_padding else {}),
             },
             oci.CONFIG,
         )
@@ -152,17 +155,27 @@ class NativeContainersTest(unittest.TestCase):
                 self.archive("amd64", self.root / "fixture.tar", **options)
 
     def test_oversized_metadata_reports_size_without_bypassing_rejection(self):
-        with (
-            mock.patch.object(sys, "stderr", new_callable=io.StringIO) as output,
-            self.assertRaisesRegex(ValueError, "Missing or oversized OCI metadata"),
-        ):
-            self.archive("amd64", self.root / "fixture.tar", padding=oci.MAX_ATTESTATION_JSON + 1)
-        diagnostic = json.loads(output.getvalue())
-        self.assertTrue(diagnostic["present"])
-        self.assertGreater(diagnostic["size"], oci.MAX_ATTESTATION_JSON)
-        self.assertEqual(diagnostic["max_structural_json_bytes"], oci.MAX_JSON)
-        self.assertEqual(diagnostic["max_attestation_json_bytes"], oci.MAX_ATTESTATION_JSON)
-        self.assertRegex(diagnostic["oci_metadata_failure"], r"^blobs/sha256/[0-9a-f]{64}$")
+        cases = (
+            ({"padding": oci.MAX_ATTESTATION_JSON + 1}, oci.MAX_ATTESTATION_JSON),
+            ({"config_padding": oci.MAX_JSON}, oci.MAX_JSON),
+        )
+        for options, limit in cases:
+            with (
+                self.subTest(options=options),
+                mock.patch.object(sys, "stderr", new_callable=io.StringIO) as output,
+                self.assertRaisesRegex(ValueError, "Missing or oversized OCI metadata"),
+            ):
+                self.archive("amd64", self.root / "fixture.tar", **options)
+            diagnostic = json.loads(output.getvalue())
+            self.assertTrue(diagnostic["present"])
+            self.assertGreater(diagnostic["size"], limit)
+            self.assertEqual(diagnostic["max_structural_json_bytes"], oci.MAX_JSON)
+            self.assertEqual(diagnostic["max_attestation_json_bytes"], oci.MAX_ATTESTATION_JSON)
+            self.assertRegex(diagnostic["oci_metadata_failure"], r"^blobs/sha256/[0-9a-f]{64}$")
+
+    def test_native_archive_accepts_sbom_statements_above_metadata_limit(self):
+        checked = self.archive("amd64", self.root / "fixture.tar", padding=oci.MAX_JSON)
+        self.assertIn(native.SBOM, checked["attestations"][0]["predicate_types"])
 
     def test_root_image_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "non-root"):
