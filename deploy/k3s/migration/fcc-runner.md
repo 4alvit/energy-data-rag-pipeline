@@ -42,3 +42,43 @@ image pull exceeds the maintenance budget, inspect the resulting pod and
 registration before retrying: an uncertain rollout result is not proof that no
 listener started. Do not delete active jobs or change their limits to accelerate
 the migration.
+
+## Cache placement and runtime scan costs
+
+Package caches use `/runner-cache` (`XDG_CACHE_HOME`, `PIP_CACHE_DIR`, and
+`UV_CACHE_DIR`); action tool installations use `/opt/hostedtoolcache`
+(`RUNNER_TOOL_CACHE` and `AGENT_TOOLSDIRECTORY`). Each path is a separate
+disk-backed `emptyDir` with a 16 GiB size limit, not memory-backed storage. These
+caches survive jobs and container restarts within a pod, but are disposable when
+the pod is replaced, just like the old writable-layer caches. The next job may
+download dependencies again. Kubernetes checks these size limits asynchronously;
+they are eviction thresholds rather than instantaneous filesystem quotas.
+
+This removes large cache trees from containerd's frequent writable-snapshot walks.
+Kubelet still measures volume usage, normally at a one-minute interval; the change
+reduces repeated scans rather than eliminating all disk accounting. The companion
+mp configuration in `k3s-self-healing/hosts/mp/containerd-stats` sets the remaining
+containerd snapshot scans to 60 seconds.
+
+The live runner can predate the recovery manifest's non-root hardening. To add
+only caches, capture a fresh Deployment JSON in a private operator directory and
+run `python3 scripts/fcc_runner_cache_patch.py deployment.json cache.patch.json`.
+The generated patch tests UID/resourceVersion, preserves the current image,
+security settings, resources, work volume, and credentials, and changes only the
+two cache volumes/mounts and five cache environment variables. No API calls or
+rollout are performed by the generator. Do not apply the full recovery manifest
+as a cache-only update.
+
+Inspect all workflows targeting this listener, including dynamic labels from
+repository variables. Remove enough custom routing labels to prevent new jobs
+matching and confirm on GitHub that the listener remains online and idle before
+applying the patch with `kubectl patch --type=json --patch-file`. Removing only
+`fcc` is sufficient only when every matching job requires that label. A busy
+listener must finish first. Keep `Recreate` and one replica
+to avoid duplicate runner registration. After rollout, require Ready, online,
+zero restarts, writable cache paths, and `pip cache dir`/`uv cache dir` resolving
+inside `/runner-cache`. Restore the intended routing labels, then run **Validate
+FCC runner** and verify its actual runner name; that workflow itself requires
+the `fcc` and `mp` labels. Do not copy or delete files from an active
+runner's writable layer. Rollback uses the captured original cache-related fields
+after the same idle gate; never replay an old resourceVersion blindly.
