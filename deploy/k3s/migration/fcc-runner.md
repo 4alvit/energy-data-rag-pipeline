@@ -57,8 +57,7 @@ they are eviction thresholds rather than instantaneous filesystem quotas.
 This removes large cache trees from containerd's frequent writable-snapshot walks.
 Kubelet still measures volume usage, normally at a one-minute interval; the change
 reduces repeated scans rather than eliminating all disk accounting. The companion
-mp configuration in `k3s-self-healing/hosts/mp/containerd-stats` sets the remaining
-containerd snapshot scans to 60 seconds.
+host configuration sets the remaining containerd snapshot scans to 60 seconds.
 
 The live runner can predate the recovery manifest's non-root hardening. To add
 only caches, capture a fresh Deployment JSON in a private operator directory and
