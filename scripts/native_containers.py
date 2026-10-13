@@ -8,8 +8,10 @@ import platform
 import re
 import subprocess
 import sys
+import tarfile
 import time
 from contextlib import ExitStack
+from itertools import islice
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -115,12 +117,40 @@ def configuration(root):
     return config
 
 
+def report_metadata_failure(path, error):
+    """Log only bounded tar-header metadata while preserving the verifier failure."""
+    prefix = "Missing or oversized OCI metadata: "
+    if not str(error).startswith(prefix):
+        return
+    name = str(error).removeprefix(prefix)
+    if not re.fullmatch(r"blobs/sha256/[0-9a-f]{64}", name):
+        return
+    with tarfile.open(path, "r:*") as stream:
+        entry = next((item for item in islice(stream, 100_000) if item.name == name), None)
+    print(
+        json.dumps(
+            {
+                "oci_metadata_failure": name,
+                "present": entry is not None,
+                "size": entry.size if entry is not None else None,
+                "max_json_bytes": oci.MAX_JSON,
+            },
+            sort_keys=True,
+        ),
+        file=sys.stderr,
+    )
+
+
 def inspect_archive(path, arch, expected):
     """Verify content closure, native config, SBOM and provenance subjects."""
     with ExitStack() as stack:
-        archive = oci.Archive(
-            path, f"linux/{arch}", expected["version"], expected["revision"], stack
-        )
+        try:
+            archive = oci.Archive(
+                path, f"linux/{arch}", expected["version"], expected["revision"], stack
+            )
+        except ValueError as error:
+            report_metadata_failure(path, error)
+            raise
         predicates = {kind for item in archive.attestations for kind in item["predicate_types"]}
         oci.require(bool(predicates & oci.PROVENANCE_TYPES), "Native archive lacks provenance")
         oci.require(SBOM in predicates, "Native archive lacks SBOM")
