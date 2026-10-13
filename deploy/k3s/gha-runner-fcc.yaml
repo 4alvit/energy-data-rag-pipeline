@@ -80,6 +80,17 @@ spec:
               value: "true"
             - name: RUNNER_WORKDIR
               value: /runner/_work
+            # Keep dependency/tool caches out of containerd's writable snapshot.
+            - name: XDG_CACHE_HOME
+              value: /runner-cache
+            - name: PIP_CACHE_DIR
+              value: /runner-cache/pip
+            - name: UV_CACHE_DIR
+              value: /runner-cache/uv
+            - name: RUNNER_TOOL_CACHE
+              value: /opt/hostedtoolcache
+            - name: AGENT_TOOLSDIRECTORY
+              value: /opt/hostedtoolcache
             - name: ACCESS_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -90,6 +101,8 @@ spec:
               mountPath: /actions-runner
             - name: home
               mountPath: /home/runner
+            - name: dependency-cache
+              mountPath: /runner-cache
             - name: toolcache
               mountPath: /opt/hostedtoolcache
             - name: tmp
@@ -109,7 +122,11 @@ spec:
         - name: home
           emptyDir: {}
         - name: toolcache
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 16Gi
+        - name: dependency-cache
+          emptyDir:
+            sizeLimit: 16Gi
         - name: tmp
           emptyDir: {}
         - name: work
