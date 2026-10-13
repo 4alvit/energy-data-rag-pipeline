@@ -189,7 +189,9 @@ class NativeValidationTest(unittest.TestCase):
         self.assertEqual(set(release["on"]), {"push", "schedule", "workflow_dispatch"})
         jobs = release["jobs"]
         self.assertEqual(jobs["build"]["uses"], "./.github/workflows/release-build.yml")
-        self.assertEqual(set(jobs["gate"]["needs"]), {"prepare", "checks", "build"})
+        self.assertEqual(
+            set(jobs["gate"]["needs"]), {"prepare", "checks", "build", "fuzz"}
+        )
         self.assertIn("gate", jobs["candidate"]["needs"])
         gate_steps = [step for step in jobs["gate"]["steps"] if "run" in step]
         self.assertEqual(len(gate_steps), 1)
