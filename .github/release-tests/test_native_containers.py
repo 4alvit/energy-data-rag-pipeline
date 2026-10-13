@@ -156,11 +156,12 @@ class NativeContainersTest(unittest.TestCase):
             mock.patch.object(sys, "stderr", new_callable=io.StringIO) as output,
             self.assertRaisesRegex(ValueError, "Missing or oversized OCI metadata"),
         ):
-            self.archive("amd64", self.root / "fixture.tar", padding=oci.MAX_JSON)
+            self.archive("amd64", self.root / "fixture.tar", padding=oci.MAX_ATTESTATION_JSON + 1)
         diagnostic = json.loads(output.getvalue())
         self.assertTrue(diagnostic["present"])
-        self.assertGreater(diagnostic["size"], oci.MAX_JSON)
-        self.assertEqual(diagnostic["max_json_bytes"], oci.MAX_JSON)
+        self.assertGreater(diagnostic["size"], oci.MAX_ATTESTATION_JSON)
+        self.assertEqual(diagnostic["max_structural_json_bytes"], oci.MAX_JSON)
+        self.assertEqual(diagnostic["max_attestation_json_bytes"], oci.MAX_ATTESTATION_JSON)
         self.assertRegex(diagnostic["oci_metadata_failure"], r"^blobs/sha256/[0-9a-f]{64}$")
 
     def test_root_image_is_rejected(self):
