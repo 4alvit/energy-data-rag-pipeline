@@ -29,8 +29,11 @@ jobs:
     with:
       version: ${{ needs.scope.outputs.version }}
       channel: beta
+      # Pull requests build the committed base without allocating release identity.
+      release_plan_artifact: ''
     permissions:
       contents: read
+      actions: read
   gate:
     name: Native container gate
     needs: [scope, build]

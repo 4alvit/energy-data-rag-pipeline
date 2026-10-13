@@ -161,6 +161,7 @@ class NativeValidationTest(unittest.TestCase):
             step["with"]
             for step in jobs["package"]["steps"]
             if step.get("uses", "").startswith("actions/download-artifact@")
+            and step["with"]["name"].startswith("native-cell-")
         ]
         expected = [
             {

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-# Derived from dbus-event-log 09f1ed1425cc7d266281fdd5dcf9800ca22abfa1.
-# Energy adaptation: bounded 8 MB attestation JSON; preserve on upstream refresh.
+# Vendored release toolkit; change the toolkit source, then render again.
 # ruff: noqa
 # mypy: ignore-errors
 # pylint: skip-file
@@ -50,9 +49,6 @@ LAYER_TYPES = {
 PLATFORMS = ("linux/amd64", "linux/arm64")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 MAX_JSON = 2_000_000
-# Energy's unchanged RAG/FCC SBOMs measure 3.85/2.64 MB. Permit bounded
-# in-toto statements up to 8 MB; index/config limits and 32 MB total stay fixed.
-MAX_ATTESTATION_JSON = 8_000_000
 MAX_JSON_TOTAL = 32_000_000
 CHUNK = 1024 * 1024
 MAX_LAYER_BYTES = 8 * 1024**3
@@ -84,7 +80,7 @@ def identity(stream):
     return {"sha256": digest.hexdigest(), "size": size}
 
 
-def document(raw, limit=MAX_JSON):
+def document(raw):
     """Reject duplicate JSON keys and non-standard numeric constants."""
 
     def pairs(items):
@@ -97,7 +93,7 @@ def document(raw, limit=MAX_JSON):
     def invalid_constant(value):
         raise ValueError(f"Invalid OCI JSON constant: {value}")
 
-    require(len(raw) <= limit, "Oversized OCI JSON")
+    require(len(raw) <= MAX_JSON, "Oversized OCI JSON")
     try:
         result = json.loads(
             raw, object_pairs_hook=pairs, parse_constant=invalid_constant
@@ -141,6 +137,7 @@ class Archive:
         self.attestations = []
         self.visited = 0
         self.metadata_bytes = 0
+        self.metadata_names = set()
         self.layer_identities = {}
         self.rootfs_bytes = 0
         require(not self.path.is_symlink(), "Input archive must not be a symlink")
@@ -163,13 +160,17 @@ class Archive:
         require(layout.get("imageLayoutVersion") == "1.0.0", "Invalid OCI layout")
         root = self.read_json("index.json")
         self.walk_index(root, 0)
+        self.validate_complete_graph()
+        self.unchanged()
+
+    def validate_complete_graph(self):
+        """Keep the native-input contract overridable only by explicit validators."""
         require(len(self.images) == 1, "Expected exactly one runnable image per input")
         for attestation in self.attestations:
             require(
                 attestation["subject"] == self.images[0]["descriptor"],
                 "OCI attestation subject differs from runnable image",
             )
-        self.unchanged()
 
     def inventory(self):
         """Check every outer member and every blob, including unreferenced blobs."""
@@ -203,18 +204,19 @@ class Archive:
             # OCI permits extension files (for example Docker manifest.json).
             # Safe regular extension files are ignored, never copied or executed.
 
-    def read_json(self, name, limit=MAX_JSON):
+    def read_json(self, name):
+        self.metadata_names.add(name)
         entry = self.members.get(name)
         require(
-            entry is not None and 0 < entry.size <= limit,
-            f"Missing or oversized OCI metadata: {name} (bytes={entry.size if entry else None}, limit={limit})",
+            entry is not None and 0 < entry.size <= MAX_JSON,
+            f"Missing or oversized OCI metadata: {name}",
         )
         with self.tar.extractfile(entry) as stream:
-            raw = stream.read(limit + 1)
+            raw = stream.read(MAX_JSON + 1)
         require(len(raw) == entry.size, "Truncated OCI metadata")
         self.metadata_bytes += len(raw)
         require(self.metadata_bytes <= MAX_JSON_TOTAL, "Too much OCI metadata")
-        return document(raw, limit=limit)
+        return document(raw)
 
     def blob(self, descriptor, media_types, metadata=False):
         require(isinstance(descriptor, dict), "OCI descriptor must be an object")
@@ -490,9 +492,7 @@ class Archive:
         predicate_types = set()
         for layer in layers:
             self.blob(layer, {IN_TOTO})
-            statement = self.read_json(
-                BLOB_PREFIX + layer["digest"][7:], limit=MAX_ATTESTATION_JSON
-            )
+            statement = self.read_json(BLOB_PREFIX + layer["digest"][7:])
             subjects = statement.get("subject")
             require(
                 statement.get("_type")

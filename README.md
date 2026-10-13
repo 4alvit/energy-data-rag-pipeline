@@ -338,3 +338,6 @@ scope and verification.
 The actual citation extraction and reference formatter receive synthetic generated answers against a one-document fixture. Unknown citations cannot become sources, repeated citations must deduplicate, and the original answer is retained. No model, embedding service, database or document download is used.
 
 [RC-only fuzzing policy, local reproduction and failure handling](docs/fuzzing.md).
+
+Release artifact identity, build receipts and local reproduction are documented in
+[release packaging](docs/release-packaging.md).
