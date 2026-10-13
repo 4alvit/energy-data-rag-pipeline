@@ -11,10 +11,11 @@ import socket
 import ssl
 import threading
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from cryptography import x509
@@ -284,6 +285,8 @@ def proxy(
         listener.settimeout(5)
 
         def worker() -> None:
+            request = b""
+            tunnel_established = False
             try:
                 raw, _ = listener.accept()
                 with raw:
@@ -297,7 +300,6 @@ def proxy(
                     else:
                         incoming = raw
                     with incoming:
-                        request = b""
                         while b"\r\n\r\n" not in request:
                             data = incoming.recv(8192)
                             if not data:
@@ -307,6 +309,7 @@ def proxy(
                         assert request.startswith(f"CONNECT localhost:{target_port} ".encode())
                         with socket.create_connection(("127.0.0.1", target_port), timeout=5) as out:
                             incoming.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+                            tunnel_established = True
                             while True:
                                 ready, _, _ = select.select([incoming, out], [], [], 5)
                                 if not ready:
@@ -321,9 +324,10 @@ def proxy(
                 # TLS clients may reject this proxy certificate or close its tunnel.
                 pass
             except (ConnectionResetError, BrokenPipeError) as error:
-                # A rejected proxy may observe TCP reset rather than TLS close.
-                # A reset after any CONNECT bytes is an unexpected partial request.
-                if observed:
+                # Rejecting either TLS peer may close with TCP reset. Once CONNECT
+                # succeeds, the caller checks the origin result and application bytes.
+                # A partial CONNECT or a reset before its response remains an error.
+                if request and not tunnel_established:
                     errors.append(error)
             except Exception as error:
                 errors.append(error)
@@ -336,6 +340,38 @@ def proxy(
             thread.join(6)
             assert not thread.is_alive()
             assert not errors, errors
+
+
+@pytest.mark.parametrize("error_type", [ConnectionResetError, BrokenPipeError])
+@pytest.mark.parametrize("phase", ["before_request", "partial_request", "response", "tunnel"])
+def test_proxy_reset_boundaries(monkeypatch, error_type, phase):
+    """Exercise reset ordering deterministically without depending on TCP timing."""
+    listener, incoming, outgoing = (MagicMock() for _ in range(3))
+    for connection in (listener, incoming, outgoing):
+        connection.__enter__.return_value = connection
+    listener.accept.return_value = (incoming, ("127.0.0.1", 12345))
+    listener.getsockname.return_value = ("127.0.0.1", 54321)
+    request = b"CONNECT localhost:12345 HTTP/1.1\r\n\r\n"
+    reset = error_type("synthetic reset")
+    if phase == "before_request":
+        incoming.recv.side_effect = [reset]
+    elif phase == "partial_request":
+        incoming.recv.side_effect = [request[:8], reset]
+    else:
+        incoming.recv.side_effect = [request, reset]
+    if phase == "response":
+        incoming.sendall.side_effect = reset
+    monkeypatch.setattr(socket, "socket", lambda: listener)
+    monkeypatch.setattr(socket, "create_connection", lambda *args, **kwargs: outgoing)
+    monkeypatch.setattr(select, "select", lambda *args: ([incoming], [], []))
+    expected = (
+        pytest.raises(AssertionError, match="synthetic reset")
+        if phase in ("partial_request", "response")
+        else nullcontext()
+    )
+    with expected, proxy(12345, None) as (_, observed):
+        pass
+    assert observed == ([request] if phase in ("response", "tunnel") else [])
 
 
 @pytest.mark.skipif(__import__("sys").platform != "darwin", reason="Native Apple framework")
