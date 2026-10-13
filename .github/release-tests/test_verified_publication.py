@@ -298,6 +298,9 @@ class RegistryPublicationTests(unittest.TestCase):
         for error in (
             'time="2026-10-10T14:18:00-07:00" level=fatal msg="Error listing '
             'repository tags: fetching tags list: name unknown"\n',
+            'time="2026-10-10T14:18:00-07:00" level=fatal msg="Error listing '
+            'repository tags: fetching tags list: name unknown: repository name not known to registry"\n',
+            "name unknown: repository name not known to registry\n",
             "NAME_UNKNOWN: repository name not known to registry\n",
             "NAME_UNKNOWN\n",
             "repository does not exist\n",
@@ -320,6 +323,9 @@ class RegistryPublicationTests(unittest.TestCase):
             "repository does not exist or may require docker login",
             "NAME_UNKNOWN: authentication required",
             "name unknown: access denied",
+            "NAME_UNKNOWN: repository name not known to registry: authentication required",
+            "name unknown: repository name not known to registry\naccess denied",
+            'level=fatal msg="name unknown: repository name not known to registry: access denied"\n',
             "certificate signed by unknown authority",
             "dial tcp: connection refused",
             "MANIFEST_UNKNOWN: manifest unknown",

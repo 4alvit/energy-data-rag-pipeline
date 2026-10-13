@@ -108,6 +108,10 @@ def read_state(gh: rc.GitHub) -> tuple[_Ledger, str | None]:
         return {"schema": 1, "counter": 0, "publication_floor": 0, "plans": {}}, None
     content = cast(dict[str, object], content)
     rc.require(
+        content.get("encoding") != "none",
+        "Ledger requires compaction before another allocation",
+    )
+    rc.require(
         content.get("type") == "file" and content.get("encoding") == "base64",
         "Ledger must be a regular JSON file",
     )
@@ -115,7 +119,7 @@ def read_state(gh: rc.GitHub) -> tuple[_Ledger, str | None]:
         "".join(cast(str, content["content"]).split()), validate=True
     )
     rc.require(
-        len(raw) <= 4_000_000, "Ledger requires compaction before another allocation"
+        len(raw) <= 900_000, "Ledger requires compaction before another allocation"
     )
     state = cast(_Ledger, rc.parse_json(raw, "release version ledger"))
     rc.require(

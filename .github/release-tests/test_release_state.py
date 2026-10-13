@@ -8,6 +8,7 @@
 # Tests exercise the existing in-memory GitHub CAS contract without remote calls.
 # pylint: disable=missing-function-docstring,missing-class-docstring
 
+import base64
 import copy
 import unittest
 from datetime import datetime, timezone
@@ -165,6 +166,34 @@ class PublicationFloorTests(unittest.TestCase):
                 self.gh.ledger[field] = True
                 with self.assertRaises(rc.ReleaseError):
                     state.read_state(self.gh)
+
+    def test_contents_encoding_none_reports_compaction_before_file_validation(self):
+        for kind in ("file", "dir"):
+            with (
+                self.subTest(kind=kind),
+                patch.object(self.gh, "optional", return_value={"type": kind, "encoding": "none"}),
+                self.assertRaisesRegex(rc.ReleaseError, "Ledger requires compaction before another allocation"),
+            ):
+                state.read_state(self.gh)
+        self.assertEqual(self.gh.ledger_writes, [])
+
+    def test_decoded_ledger_size_is_bounded_below_contents_api_limit(self):
+        ledger = {"schema": 1, "counter": 0, "publication_floor": 0, "plans": {}}
+        raw = rc.json_bytes(ledger)
+        for size in (900_000, 900_001):
+            content = {
+                "type": "file",
+                "encoding": "base64",
+                "sha": SHA,
+                "content": base64.b64encode(raw + b" " * (size - len(raw))).decode(),
+            }
+            with self.subTest(size=size), patch.object(self.gh, "optional", return_value=content):
+                if size == 900_000:
+                    self.assertEqual(state.read_state(self.gh), (ledger, SHA))
+                else:
+                    with self.assertRaisesRegex(rc.ReleaseError, "Ledger requires compaction before another allocation"):
+                        state.read_state(self.gh)
+        self.assertEqual(self.gh.ledger_writes, [])
 
     def test_deleted_ledger_on_existing_branch_cannot_reset_counters(self):
         plan = self.reserve()

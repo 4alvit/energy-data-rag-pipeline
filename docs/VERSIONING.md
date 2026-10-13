@@ -86,6 +86,10 @@ at the first source commit). GitHub's Contents API blob-SHA compare-and-swap
 serializes allocations. Conflicts fail; they never silently rename a compiled
 candidate. This metadata branch is not a release/deployment trigger.
 
+Ledgers above 900,000 decoded bytes require compaction before another allocation,
+leaving headroom below the Contents API's 1 MB inline-content limit. A response
+with encoding `none` reports the same compaction requirement.
+
 A reservation is keyed by Actions run ID and bound to the source, policy, channel,
 base, and accepted RC when applicable. Rerunning that run reuses the plan; a new
 run consumes a new number. Failed runs may leave gaps. Preserve the state branch

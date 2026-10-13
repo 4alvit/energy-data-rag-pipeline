@@ -547,6 +547,61 @@ class MergeTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "variant"):
             self.merge(inputs)
 
+    def test_attestation_statements_have_a_separate_bounded_size_limit(self):
+        self.assertLess(oci.MAX_JSON, oci.MAX_ATTESTATION_JSON)
+        self.assertLess(oci.MAX_ATTESTATION_JSON, oci.MAX_JSON_TOTAL)
+        for kind in ("legacy", "artifact"):
+            for size in (oci.MAX_JSON + 1, oci.MAX_ATTESTATION_JSON, oci.MAX_ATTESTATION_JSON + 1):
+                with self.subTest(kind=kind, size=size):
+                    entries = self.fixture("amd64", nested=False, attestation=kind)
+
+                    def mutate(body):
+                        layer = body["layers"][0]
+                        statement = json.loads(entries[oci.BLOB_PREFIX + layer["digest"][7:]])
+                        statement["predicateType"] = "https://spdx.dev/Document"
+                        statement["predicate"]["padding"] = ""
+                        statement["predicate"]["padding"] = "x" * (size - len(oci.canonical(statement)))
+                        body["layers"] = [self.blob(entries, statement, oci.IN_TOTO)]
+                        self.assertEqual(body["layers"][0]["size"], size)
+
+                    self.rewrite_manifest(entries, mutate, index=1)
+                    inputs = self.inputs(entries)
+                    if size > oci.MAX_ATTESTATION_JSON:
+                        with self.assertRaisesRegex(ValueError, "oversized OCI metadata"):
+                            self.merge(inputs)
+                        self.assertFalse(self.output.exists())
+                    else:
+                        result = self.merge(inputs)
+                        self.assertEqual(len(result["images"]["linux/amd64"]["attestation_digests"]), 1)
+                        self.output.unlink()
+
+    def test_attestation_statements_still_count_towards_total_metadata_limit(self):
+        entries = self.fixture("amd64", nested=False, attestation="artifact")
+
+        def mutate(body):
+            layer = body["layers"][0]
+            statement = json.loads(entries[oci.BLOB_PREFIX + layer["digest"][7:]])
+            body["layers"] = []
+            for index in range(oci.MAX_JSON_TOTAL // oci.MAX_ATTESTATION_JSON):
+                statement["predicate"] = {"index": index}
+                raw = oci.canonical(statement)
+                raw += b" " * (oci.MAX_ATTESTATION_JSON - len(raw))
+                body["layers"].append(self.blob(entries, raw, oci.IN_TOTO))
+
+        self.rewrite_manifest(entries, mutate, index=1)
+        with self.assertRaisesRegex(ValueError, "Too much OCI metadata"):
+            self.merge(self.inputs(entries))
+        self.assertFalse(self.output.exists())
+
+    def test_document_uses_metadata_limit_unless_explicitly_overridden(self):
+        raw = b"{}" + b" " * (oci.MAX_JSON - 1)
+        with self.assertRaisesRegex(ValueError, "Oversized OCI JSON"):
+            oci.document(raw)
+        self.assertEqual(oci.document(raw, oci.MAX_ATTESTATION_JSON), {})
+        raw = b"{}" + b" " * (oci.MAX_ATTESTATION_JSON - 1)
+        with self.assertRaisesRegex(ValueError, "Oversized OCI JSON"):
+            oci.document(raw, oci.MAX_ATTESTATION_JSON)
+
     def test_input_symlink_and_oversized_json_are_rejected(self):
         inputs = self.inputs()
         link = self.root / "input-link.tar"

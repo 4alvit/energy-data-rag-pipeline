@@ -182,8 +182,9 @@ def require_unpublished_version(image, version):
     # Require an unambiguous terminal diagnostic: a missing-repository phrase
     # followed by a login or permission warning is not proof of absence.
     elif not re.search(
-        r"(?:\bNAME_UNKNOWN\b(?:: repository name not known to registry)?"
-        r"|\bname unknown\b|\brepository does not exist\b)[\"']?\s*$",
+        r"(?:(?:\bNAME_UNKNOWN\b|\bname unknown\b)"
+        r"(?:: repository name not known to registry)?"
+        r"|\brepository does not exist\b)[\"']?\s*$",
         check.stderr,
         re.IGNORECASE,
     ):
