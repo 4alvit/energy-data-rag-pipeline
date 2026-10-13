@@ -65,3 +65,9 @@ release-dist/
 .release-download/
 .release-assets/
 .release-evidence/
+
+# Isolated RC fuzz runtime and local diagnostic inputs
+.fuzz-venv/
+crash-*
+timeout-*
+oom-*
