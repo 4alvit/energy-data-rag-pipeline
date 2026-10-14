@@ -173,6 +173,8 @@ def peer(
     redirect: str | None = None,
     client_auth: bool = False,
     response_body: bytes = b"",
+    declared_length: int | None = None,
+    raw_response: bytes | None = None,
 ) -> Iterator[tuple[int, dict[str, Any]]]:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = context.maximum_version = version
@@ -229,9 +231,11 @@ def peer(
                             else "HTTP/1.1 200 OK\r\n"
                         )
                         connection.sendall(
-                            (
+                            raw_response
+                            if raw_response is not None
+                            else (
                                 response
-                                + f"Content-Length: {len(response_body)}\r\n"
+                                + f"Content-Length: {len(response_body) if declared_length is None else declared_length}\r\n"
                                 + "Content-Type: application/json\r\nConnection: close\r\n\r\n"
                             ).encode()
                             + response_body

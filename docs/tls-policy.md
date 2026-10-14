@@ -28,6 +28,13 @@ contexts. They preserve default CA/hostname checks, environment proxy routing,
 redirect handling and request timeouts. The verified origin chain is checked
 before the HTTP request or query payload. Forum ingestion accepts only HTTP(S)
 URLs, including redirect targets; local files, FTP and data URLs are rejected.
+Public-page URLs retain Unicode/IDNA normalization and responses honor their
+HTTP charset. Malformed or incomplete HTTP responses produce no document.
+The fetcher does not provide authenticated browser sessions, cookie persistence,
+`.netrc` authentication or embedded-URL credential support. For private forum
+content, import an explicitly obtained export through the file ingestion path.
+Its requests advertise identity content encoding; a server must honor that
+request rather than depend on a Requests-specific compression/session feature.
 Plain HTTP remains available for the
 existing local API deployment; this policy does not add TLS to an HTTP URL.
 

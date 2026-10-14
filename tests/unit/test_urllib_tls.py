@@ -10,7 +10,7 @@ from urllib.error import URLError
 import pytest
 from test_tls_policy import CHAIN_CASES, calibrate, chains, clean_environment, peer, proxy
 
-from energy_rag.ingestion.forum_loader import fetch_forum_url
+from energy_rag.ingestion.forum_loader import _normalize_forum_url, fetch_forum_url
 from energy_rag.mcp_server import RagApiClient
 
 __all__ = ["chains", "clean_environment"]
@@ -185,3 +185,103 @@ def test_forum_rejects_non_http_redirects(chains, monkeypatch, target):
 )
 def test_forum_cleanly_rejects_missing_or_malformed_scheme(url):
     assert list(fetch_forum_url(url)) == []
+
+
+@pytest.mark.parametrize("version", [ssl.TLSVersion.TLSv1_2, ssl.TLSVersion.TLSv1_3])
+def test_forum_discards_truncated_response(chains, monkeypatch, version):
+    monkeypatch.setenv("SSL_CERT_FILE", str(chains["strong"][2]))
+    body = b"<h1>Title</h1><main>partial document must not be ingested</main>"
+    with peer(chains["strong"], version, response_body=body, declared_length=len(body) + 100) as (
+        port,
+        observed,
+    ):
+        assert (
+            list(
+                fetch_forum_url(
+                    f"https://localhost:{port}",
+                    {
+                        "title": "h1",
+                        "question": "main",
+                        "answer": ".answer",
+                        "metadata": {},
+                    },
+                )
+            )
+            == []
+        )
+    assert observed["application_bytes"]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        b"not-an-http-status\r\nContent-Length: 0\r\n\r\n",
+        b"HTTP/1.1 200 OK\r\nX-Oversized: " + b"x" * 66000 + b"\r\n\r\n",
+    ],
+)
+def test_forum_discards_malformed_http_response(chains, monkeypatch, response):
+    monkeypatch.setenv("SSL_CERT_FILE", str(chains["strong"][2]))
+    with peer(chains["strong"], ssl.TLSVersion.TLSv1_3, raw_response=response) as (port, observed):
+        assert list(fetch_forum_url(f"https://localhost:{port}")) == []
+    assert observed["application_bytes"]
+
+
+@pytest.mark.parametrize(
+    "charset,text",
+    [
+        ("windows-1251", "Привет"),
+        ("shift_jis", "こんにちは"),
+        ("iso-8859-9", "ışık"),
+        ("invalid-charset", "Привет"),
+    ],
+)
+def test_forum_preserves_http_charset(chains, monkeypatch, charset, text):
+    monkeypatch.setenv("SSL_CERT_FILE", str(chains["strong"][2]))
+    encoding = "utf-8" if charset == "invalid-charset" else charset
+    body = f"<html><h1>Title</h1><main>{text}</main></html>".encode(encoding)
+    response = (
+        f"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset={charset}\r\n"
+        f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n"
+    ).encode("ascii") + body
+    with peer(chains["strong"], ssl.TLSVersion.TLSv1_3, raw_response=response) as (port, _):
+        documents = list(
+            fetch_forum_url(
+                f"https://localhost:{port}",
+                {
+                    "title": "h1",
+                    "question": "main",
+                    "answer": ".answer",
+                    "metadata": {},
+                },
+            )
+        )
+    assert len(documents) == 1
+    assert text in documents[0].page_content
+
+
+def test_forum_preserves_unicode_paths_and_queries(chains, monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", str(chains["strong"][2]))
+    body = b"<h1>Title</h1><main>Unicode URL works</main>"
+    with peer(chains["strong"], ssl.TLSVersion.TLSv1_3, response_body=body) as (port, observed):
+        url = f"https://localhost:{port}/тема?q=б"
+        documents = list(
+            fetch_forum_url(
+                url,
+                {
+                    "title": "h1",
+                    "question": "main",
+                    "answer": ".answer",
+                    "metadata": {},
+                },
+            )
+        )
+    assert b"GET /%D1%82%D0%B5%D0%BC%D0%B0?q=%D0%B1 HTTP/1.1" in observed["application_bytes"]
+    assert len(documents) == 1
+    assert documents[0].metadata["source"] == url
+
+
+def test_forum_normalizes_internationalized_host_without_network():
+    assert (
+        _normalize_forum_url("https://пример.рф/тема")
+        == "https://xn--e1afmkfd.xn--p1ai/%D1%82%D0%B5%D0%BC%D0%B0"
+    )

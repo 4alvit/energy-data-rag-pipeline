@@ -4,7 +4,7 @@
   "homepage_url": "https://github.com/4alvit/energy-data-rag-pipeline",
   "repo_url": "https://github.com/4alvit/energy-data-rag-pipeline",
   "license": "MIT",
-  "implementation_languages": "Python, Shell",
+  "implementation_languages": "Python, Shell, SQL",
   "description_good_status": "Met",
   "description_good_justification": "Purpose, installation, configuration and usage are documented in https://github.com/4alvit/energy-data-rag-pipeline/blob/main/README.md",
   "interact_status": "Met",

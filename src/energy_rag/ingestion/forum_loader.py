@@ -4,6 +4,7 @@ import json
 import logging
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from http.client import HTTPException
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import urlparse
@@ -11,6 +12,7 @@ from urllib.request import BaseHandler
 
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document
+from requests import PreparedRequest
 
 from energy_rag.tls_policy import https_opener
 
@@ -182,6 +184,17 @@ def _build_post_content(post: dict) -> str:
     return "\n".join(parts)
 
 
+def _normalize_forum_url(url: str) -> str:
+    """Retain Requests' IDNA/Unicode URL preparation without its HTTP transport."""
+    if urlparse(url).scheme not in {"http", "https"}:
+        raise URLError("Forum fetching supports only HTTP and HTTPS URLs")
+    prepared = PreparedRequest()
+    prepared.prepare_url(url, None)
+    if prepared.url is None:
+        raise URLError("Forum URL could not be prepared")
+    return prepared.url
+
+
 class _HTTPOnlyHandler(BaseHandler):
     """Apply the Requests-era HTTP(S) boundary to initial URLs and redirects."""
 
@@ -193,19 +206,19 @@ class _HTTPOnlyHandler(BaseHandler):
 def fetch_forum_url(url: str, selectors: dict | None = None) -> Iterator[Document]:
     """Fetch and parse forum page from URL."""
     try:
-        if urlparse(url).scheme not in {"http", "https"}:
-            raise URLError("Forum fetching supports only HTTP and HTTPS URLs")
+        request_url = _normalize_forum_url(url)
         forum_type = detect_forum_type(url)
         sel = selectors or FORUM_SELECTORS.get(forum_type, FORUM_SELECTORS["default"])
         opener = https_opener()
         opener.add_handler(_HTTPOnlyHandler())
-        with opener.open(url, timeout=30) as response:
+        with opener.open(request_url, timeout=30) as response:
             content_bytes = response.read()
-    except (URLError, OSError, ValueError) as e:
+            response_charset = response.headers.get_content_charset()
+    except (URLError, OSError, ValueError, HTTPException) as e:
         logger.error("Failed to fetch %s: %s", url, e)
         return
 
-    soup = BeautifulSoup(content_bytes, "html.parser")
+    soup = BeautifulSoup(content_bytes, "html.parser", from_encoding=response_charset)
 
     title_elem = soup.select_one(sel["title"])
     title = title_elem.get_text(strip=True) if title_elem else ""
