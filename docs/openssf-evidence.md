@@ -35,11 +35,28 @@ CI results are evidence for the tested revision and environment, not proof of sa
 
 Follow `RELEASING.md` and `docs/release-and-images.md`. Document database/schema migrations, model/index compatibility, deployment steps and security fixes in published release notes. The [release policy](../.release-policy.json) records automation behavior. A new release must identify its source revision and explain notable changes; security fixes must identify relevant advisories when known.
 
-## Criteria still requiring verification
+## Assessment evidence and limits
 
-Before submitting or updating the questionnaire, verify the actual project-specific record: responses to bug and enhancement reports, vulnerability reports in every supported channel, release-note history, unresolved scanner findings, dependency status and required review settings. The primary maintainer must personally confirm knowledge of secure design and common implementation vulnerabilities. A confirmation about another repository does not establish these answers here.
+The maintainer personally confirmed secure-design and common-vulnerability
+knowledge for this project, with no external reports during the preceding
+12 months. The 2026-10-14 GitHub history review found no ordinary issues or
+public vulnerability advisories; private vulnerability reporting is enabled.
+These are dated historical checks and do not replace future report handling.
 
-Assess transport encryption, credential storage and privilege limits against the implementation and deployment documented in [SECURITY.md](../SECURITY.md). Do not mark a requirement satisfied solely because a policy says it should be. Record justified non-applicability only where the actual architecture supports it. No paid certification, blanket compliance guarantee or third-party audit is claimed.
+The source-bound `v0.2.12-rc.1` report records a successful 60-second `citations`
+fuzz campaign at `ec37f2187e7fe7c696b0dbd1f81ce4578902133e`:
+[run 38489038609](https://github.com/4alvit/energy-data-rag-pipeline/actions/runs/38489038609).
+That campaign predates the new forum TLS and local/offline profile changes.
+The profile/TLS regressions validate those changes separately; neither result
+establishes exhaustive source coverage or an independent security audit.
+
+The [TLS profile](tls-policy.md) separates owned checked HTTPS from optional
+provider SDKs. Complete exact-key enforcement is claimed only for its supported
+local/offline configuration, not every compatibility configuration.
+[Governance](../GOVERNANCE.md), [conduct](../CODE_OF_CONDUCT.md) and
+[roadmap](../ROADMAP.md) document participation. No backup maintainer or tested
+one-week access recovery process exists; Silver continuity remains unmet.
+The public dynamic badge is authoritative for the awarded level.
 
 
 ### Release-note structure

@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+Forum downloads now use the same exact verified-chain TLS policy as the MCP and corpus clients. Add an opt-in local/offline deployment profile that uses pre-staged models and trusted loopback Ollama/PostgreSQL, rejecting unmanaged SDK TLS and download fallback.
+
 Give FCC a bounded startup grace period before liveness checks begin, so slow initialization does not cause a restart loop. Open the next beta series after stable 0.2.11, including the TLS, dependency and release-verification improvements added since that release.
 
 ### Upgrade
+
+The compatibility deployment remains the default. To opt into `STRICT_LOCAL_PROFILE`, follow `docs/tls-policy.md`, export the offline flags before startup and provide verified local model directories. Replace weak forum certificate chains; normal certificate/hostname verification remains required.
 
 Preserve PostgreSQL/pgvector data and existing broker and certificate settings. The FCC deployment permits up to ten minutes for startup and retains liveness checks after initialization. Publishing this beta does not apply the deployment manifests or migrate stored data.
 

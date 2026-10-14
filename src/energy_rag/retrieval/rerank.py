@@ -4,6 +4,9 @@ import logging
 
 from langchain_core.documents import Document
 
+from energy_rag.config import settings
+from energy_rag.deployment_policy import local_model_options
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +23,11 @@ class Reranker:
             try:
                 from sentence_transformers import CrossEncoder
 
-                self._model = CrossEncoder(self.model_name, max_length=512)
+                self._model = CrossEncoder(
+                    self.model_name,
+                    max_length=512,
+                    **local_model_options(self.model_name, settings.strict_local_profile),
+                )
                 logger.info("Loaded reranker model: %s", self.model_name)
             except ImportError:
                 logger.warning("sentence-transformers not installed, reranking disabled")

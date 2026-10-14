@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from energy_rag.config import settings
+from energy_rag.deployment_policy import database_options
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class PgVectorDatabase:
                 pool_pre_ping=True,
                 pool_size=5,
                 max_overflow=10,
+                **database_options(self.database_url, settings.strict_local_profile),
             )
             logger.info("Created database engine")
         return self._engine
@@ -128,7 +130,9 @@ async def ensure_vector_extension(database_url: str | None = None) -> bool:
     Returns True when the extension is present afterwards.
     """
     url = database_url or settings.database_url
-    engine = create_async_engine(url, echo=False)
+    engine = create_async_engine(
+        url, echo=False, **database_options(url, settings.strict_local_profile)
+    )
     try:
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
