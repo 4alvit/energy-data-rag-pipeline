@@ -9,6 +9,7 @@ from urllib.error import URLError
 import pytest
 from test_tls_policy import CHAIN_CASES, calibrate, chains, clean_environment, peer, proxy
 
+from energy_rag.ingestion.forum_loader import fetch_forum_url
 from energy_rag.mcp_server import RagApiClient
 
 __all__ = ["chains", "clean_environment"]
@@ -107,3 +108,25 @@ def test_https_proxy_no_proxy_bypass_stays_direct(chains, monkeypatch, operation
             assert corpus_get(url) == b'{"state":"42"}'
     assert observed["alpn"] == "http/1.1"
     assert b"Proxy-Authorization" not in observed["application_bytes"]
+
+
+@pytest.mark.parametrize("case", [*CHAIN_CASES, "untrusted", "wrong-host"])
+@pytest.mark.parametrize("version", [ssl.TLSVersion.TLSv1_2, ssl.TLSVersion.TLSv1_3])
+def test_forum_uses_verified_connection(chains, monkeypatch, case, version):
+    chain = chains.get(case, chains["strong"])
+    calibrate(chain, version)
+    ca = chains["strong-ec"][2] if case == "untrusted" else chain[2]
+    monkeypatch.setenv("SSL_CERT_FILE", str(ca))
+    body = b"<html><h1>Title</h1><main>test question</main></html>"
+    with peer(chain, version, response_body=body) as (port, observed):
+        host = "127.0.0.1" if case == "wrong-host" else "localhost"
+        documents = list(
+            fetch_forum_url(
+                f"https://{host}:{port}/question",
+                {"title": "h1", "question": "main", "answer": ".answer", "metadata": {}},
+            )
+        )
+    assert bool(observed["application_bytes"]) == case.startswith("strong")
+    assert bool(documents) == case.startswith("strong")
+    if documents:
+        assert "test question" in documents[0].page_content

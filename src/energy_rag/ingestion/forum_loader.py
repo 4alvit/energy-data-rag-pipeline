@@ -5,11 +5,13 @@ import logging
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.error import URLError
 from urllib.parse import urlparse
 
-import requests
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document
+
+from energy_rag.tls_policy import https_opener
 
 logger = logging.getLogger(__name__)
 
@@ -185,13 +187,13 @@ def fetch_forum_url(url: str, selectors: dict | None = None) -> Iterator[Documen
     sel = selectors or FORUM_SELECTORS.get(forum_type, FORUM_SELECTORS["default"])
 
     try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-    except requests.RequestException as e:
+        with https_opener().open(url, timeout=30) as response:
+            content_bytes = response.read()
+    except (URLError, OSError) as e:
         logger.error("Failed to fetch %s: %s", url, e)
         return
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(content_bytes, "html.parser")
 
     title_elem = soup.select_one(sel["title"])
     title = title_elem.get_text(strip=True) if title_elem else ""

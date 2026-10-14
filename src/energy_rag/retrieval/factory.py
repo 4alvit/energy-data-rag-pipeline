@@ -3,6 +3,7 @@
 import logging
 
 from energy_rag.config import settings
+from energy_rag.deployment_policy import database_options, local_model_options, validate_llm
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,10 @@ def get_embeddings():
 
         _embeddings = HuggingFaceEmbeddings(
             model_name=settings.embedding_model,
-            model_kwargs={"device": "cpu"},
+            model_kwargs={
+                "device": "cpu",
+                **local_model_options(settings.embedding_model, settings.strict_local_profile),
+            },
             encode_kwargs={"normalize_embeddings": True},
         )
         logger.info("Initialized embeddings", extra={"model": settings.embedding_model})
@@ -31,6 +35,7 @@ def get_llm():
     """Get or create LLM based on provider."""
     global _llm
     if _llm is None:
+        validate_llm(settings.llm_provider, settings.ollama_base_url, settings.strict_local_profile)
         if settings.llm_provider == "ollama":
             from langchain_community.llms.ollama import Ollama
 
@@ -83,6 +88,7 @@ def get_vector_store():
             use_jsonb=True,
             pre_delete_collection=False,
             async_mode=True,
+            engine_args=database_options(settings.database_url, settings.strict_local_profile),
             # We ensure the extension ourselves (see storage.pgvector) because
             # langchain_postgres's async path breaks on multi-statement SQL.
             create_extension=False,

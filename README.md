@@ -1,5 +1,7 @@
 # Energy Data RAG Pipeline
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15474/badge)](https://www.bestpractices.dev/en/projects/15474)
+
 [![Fuzzing: RC only](https://img.shields.io/badge/Fuzzing-RC%20only-blue)](docs/fuzzing.md)
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
@@ -341,3 +343,11 @@ The actual citation extraction and reference formatter receive synthetic generat
 
 Release artifact identity, build receipts and local reproduction are documented in
 [release packaging](docs/release-packaging.md).
+
+## Project participation and maintenance
+
+See [Contributing](CONTRIBUTING.md), [Governance](GOVERNANCE.md), the [Code of Conduct](CODE_OF_CONDUCT.md), [Security policy](SECURITY.md), and the [roadmap](ROADMAP.md). The [OpenSSF evidence index](docs/openssf-evidence.md) records source and validation scope; only the public badge record establishes an awarded level.
+
+For a single-host installation with pre-staged models, the optional
+[local/offline profile](docs/tls-policy.md#localoffline-deployment-profile)
+enforces the documented outbound TLS and local service boundaries.

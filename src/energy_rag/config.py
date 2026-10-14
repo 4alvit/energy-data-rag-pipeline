@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,17 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    strict_local_profile: bool = Field(
+        default=False, description="Enforce local/offline SDK deployment boundaries"
+    )
+
+    @model_validator(mode="after")
+    def validate_deployment_profile(self):
+        from energy_rag.deployment_policy import validate_settings
+
+        validate_settings(self)
+        return self
 
     # Database
     database_url: str = Field(

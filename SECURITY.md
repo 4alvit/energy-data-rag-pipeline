@@ -36,40 +36,27 @@ implement a cipher or a random-number generator for keys/nonces. Telemetry
 sampling and retry jitter, where present, are not cryptographic operations.
 
 Use authenticated encrypted transport whenever credentials or private data leave
-a trusted isolated network. A local plaintext MQTT/HTTP option is not encrypted
+a trusted isolated network. A local plaintext HTTP/PostgreSQL option is not encrypted
 by these TLS defaults. Operators must separately verify remote certificates or
 SSH host-key fingerprints and replace obsolete endpoint keys. The source and
 release downloads are served through GitHub HTTPS.
 
 ## Verifying key-length policy in the deployed environment
 
-Forum ingestion uses Requests; model/provider clients delegate HTTPS to their libraries. The default Ollama endpoint is local HTTP. Keep local plaintext services isolated, and configure authenticated TLS for remote model/database endpoints. This profile does not turn a plaintext database URL or local API listener into TLS.
+The owned MCP, corpus-download and forum HTTPS paths require TLS1.2+, ordinary
+certificate/hostname validation and exact verified-chain key minima: RSA2048,
+EC224, DSA2048/224 or supported Ed25519/Ed448. This includes the selected trust
+anchor. OpenSSL security level 2 alone may accept a 2047-bit RSA modulus, so
+explicit same-connection checks are required before application data.
 
-The verified Python profile is CPython 3.12.14 with OpenSSL 3.5.8 and
-SSL security level 2. At this level OpenSSL rejects RSA/DH keys shorter than
-2048 bits and elliptic-curve keys shorter than 224 bits. It applies the check
-to certificate-chain keys as well as negotiated parameters. Use current
-supported runtime builds which preserve this policy; do not lower the security
-level or turn off certificate/hostname verification to accept an old endpoint.
-Check the interpreter which actually runs the application:
-
-```sh
-python - <<'PYTHON'
-import ssl
-import sys
-context = ssl.create_default_context()
-print(sys.version)
-print(ssl.OPENSSL_VERSION)
-print(context.security_level, context.minimum_version.name)
-if context.security_level < 2 or context.minimum_version < ssl.TLSVersion.TLSv1_2:
-    raise SystemExit("Unsupported TLS policy: upgrade the runtime; do not weaken verification")
-PYTHON
-```
-
-On 2026-10-08, isolated local handshakes using the project's installed Python
-client libraries rejected a trusted RSA-1024 server certificate and accepted
-RSA-2048 and ECDSA P-256 certificates. This is evidence for that tested runtime,
-not a claim about every operating-system TLS build or custom client configuration.
+The optional [local/offline profile](docs/tls-policy.md#localoffline-deployment-profile)
+provides a complete supported configuration without unmanaged SDK TLS: local
+model files, trusted loopback Ollama/PostgreSQL and the owned checked HTTPS
+clients. It rejects remote SDK providers, proxy routing, external tracing and
+model download fallback. It intentionally retains plaintext inside the trusted
+host boundary; it is not a network sandbox. The default compatibility profile
+continues to support remote providers, downloads and database configurations,
+whose exact TLS key policy requires a separate assessment.
 
 Release helpers also invoke `gh`, which has a separate TLS implementation.
 Follow [the release helper profile](docs/RELEASE_TLS_PROFILE.md) for the tested
@@ -78,3 +65,7 @@ smaller certificate keys. That option does not change system-wide settings.
 
 References: [OpenSSL security levels](https://docs.openssl.org/3.5/man3/SSL_CTX_set_security_level/)
 and [Python SSL contexts](https://docs.python.org/3.12/library/ssl.html#ssl.SSLContext).
+
+## Reporter credit
+
+With the reporter's consent, fixed vulnerability advisories and release notes credit the person or organization that reported the issue. Respect requests for anonymity. Record affected versions, mitigation and the fixed revision without disclosing private reproduction data or credentials.

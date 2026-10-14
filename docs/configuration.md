@@ -102,3 +102,13 @@ Notes:
    spells out the full `DATABASE_URL`).
 3. `Settings` is cached via `lru_cache` at import time; restart the process to
    apply changes.
+
+
+## Local/offline deployment
+
+The optional `STRICT_LOCAL_PROFILE=true` configuration enforces trusted loopback
+Ollama/PostgreSQL and pre-staged local models. It rejects unmanaged remote SDK
+transports and retains exact verified-chain checks for owned HTTPS clients.
+See [the full profile and its trust boundary](tls-policy.md#localoffline-deployment-profile)
+for required environment variables and migration steps. This option is disabled
+by default for compatibility with existing remote-provider deployments.
