@@ -8,13 +8,17 @@ import platform
 import re
 import subprocess
 import sys
+import tarfile
 import time
 from contextlib import ExitStack
+from itertools import islice
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import merge_oci_archives as oci
 import package_release as package
+import release_version_adapter
+import version_plan
 
 PRODUCTS = {
     "rag": "energy-data-rag-pipeline-container.oci.tar",
@@ -58,18 +62,40 @@ def binding(root, version, channel):
     """Require the committed checkout and exact current Actions attempt."""
     policy = json.loads((root / ".release-policy.json").read_text())
     oci.require(re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version), "Invalid base version")
-    oci.require(
-        package.read_version(root, policy) == version, "Version differs from committed metadata"
-    )
+    package_version = version
+    plan = None
+    if policy.get("versioning"):
+        package_version = release_version_adapter.checked_version(root, version, channel)
+        plan_path = release_version_adapter.resolve_plan_path(root)
+        if plan_path.exists():
+            plan = json.loads(plan_path.read_text())
+            # Validates the exact checkout plus only its declared version overlay.
+            version_plan.verify_checkout(root, policy, plan)
+            changed = set(
+                command(["git", "diff", "--name-only", "-z", "HEAD"], cwd=root).split("\0")
+            ) - {""}
+            owned = {entry["path"] for entry in policy["versioning"]["files"]}
+            oci.require(changed <= owned, "Tracked inputs changed outside the version overlay")
+    else:
+        oci.require(
+            package.read_version(root, policy) == version, "Version differs from committed metadata"
+        )
     oci.require(channel in {"nightly", "beta", "rc"}, "Stable must promote RC bytes")
     revision = command(["git", "rev-parse", "HEAD"], cwd=root)
     oci.require(re.fullmatch(r"[0-9a-f]{40}", revision), "Invalid source SHA")
     oci.require(revision == os.environ.get("GITHUB_SHA"), "Checkout differs from Actions SHA")
-    oci.require(
-        not command(["git", "status", "--porcelain", "--untracked-files=no"], cwd=root),
-        "Tracked inputs changed",
-    )
-    result = {"schema": 1, "version": version, "channel": channel, "revision": revision}
+    if plan is None:
+        oci.require(
+            not command(["git", "status", "--porcelain", "--untracked-files=no"], cwd=root),
+            "Tracked inputs changed",
+        )
+    result = {"schema": 1, "version": package_version, "channel": channel, "revision": revision}
+    if plan is not None:
+        result.update(
+            base_version=version,
+            plan_sha256=version_plan.plan_digest(plan),
+            python_version=version_plan.projections(plan, "pep440")["package"],
+        )
     for key, variable in (("run_id", "GITHUB_RUN_ID"), ("run_attempt", "GITHUB_RUN_ATTEMPT")):
         value = os.environ.get(variable, "")
         oci.require(re.fullmatch(r"[1-9][0-9]*", value), f"Invalid {variable}")
@@ -91,12 +117,41 @@ def configuration(root):
     return config
 
 
+def report_metadata_failure(path, error):
+    """Log only bounded tar-header metadata while preserving the verifier failure."""
+    prefix = "Missing or oversized OCI metadata: "
+    if not str(error).startswith(prefix):
+        return
+    name = str(error).removeprefix(prefix)
+    if not re.fullmatch(r"blobs/sha256/[0-9a-f]{64}", name):
+        return
+    with tarfile.open(path, "r:*") as stream:
+        entry = next((item for item in islice(stream, 100_000) if item.name == name), None)
+    print(
+        json.dumps(
+            {
+                "oci_metadata_failure": name,
+                "present": entry is not None,
+                "size": entry.size if entry is not None else None,
+                "max_structural_json_bytes": oci.MAX_JSON,
+                "max_attestation_json_bytes": oci.MAX_ATTESTATION_JSON,
+            },
+            sort_keys=True,
+        ),
+        file=sys.stderr,
+    )
+
+
 def inspect_archive(path, arch, expected):
     """Verify content closure, native config, SBOM and provenance subjects."""
     with ExitStack() as stack:
-        archive = oci.Archive(
-            path, f"linux/{arch}", expected["version"], expected["revision"], stack
-        )
+        try:
+            archive = oci.Archive(
+                path, f"linux/{arch}", expected["version"], expected["revision"], stack
+            )
+        except ValueError as error:
+            report_metadata_failure(path, error)
+            raise
         predicates = {kind for item in archive.attestations for kind in item["predicate_types"]}
         oci.require(bool(predicates & oci.PROVENANCE_TYPES), "Native archive lacks provenance")
         oci.require(SBOM in predicates, "Native archive lacks SBOM")
@@ -202,7 +257,7 @@ def smoke(root, archive, product, arch, expected, checked, endpoint):
                 "/tmp/native-smoke.py",
                 product,
                 arch,
-                expected["version"],
+                expected.get("python_version", expected["version"]),
             ],
             timeout=180,
         )
@@ -279,9 +334,9 @@ def build(root, output, product, arch, version, channel):
                 # BuildKit derives in-toto subjects from ImageName. This names
                 # the local OCI export only; neither --push nor registry output is used.
                 "--tag",
-                f"energy-native-{product}:{version}-{expected['revision']}",
+                f"energy-native-{product}:{expected['version']}-{expected['revision']}",
                 "--label",
-                f"org.opencontainers.image.version={version}",
+                f"org.opencontainers.image.version={expected['version']}",
                 "--label",
                 f"org.opencontainers.image.revision={expected['revision']}",
                 "--file",
@@ -400,7 +455,7 @@ def assemble(root, inputs, output, version, channel):
     assembled = {}
     for product, asset in PRODUCTS.items():
         assembled[product] = oci.merge_archives(
-            archives[product], output / asset, version, expected["revision"]
+            archives[product], output / asset, expected["version"], expected["revision"]
         )
         for item in assembled[product]["inputs"]:
             arch = item["platform"].split("/")[1]

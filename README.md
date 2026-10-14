@@ -1,5 +1,7 @@
 # Energy Data RAG Pipeline
 
+[![Fuzzing: RC only](https://img.shields.io/badge/Fuzzing-RC%20only-blue)](docs/fuzzing.md)
+
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Build](https://github.com/4alvit/energy-data-rag-pipeline/actions/workflows/ci.yml/badge.svg)
@@ -330,3 +332,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development, bug reports and proposal
 [SECURITY.md](SECURITY.md) for confidential vulnerability reports and deployment
 boundaries, and the [OpenSSF evidence index](docs/openssf-evidence.md) for assessment
 scope and verification.
+
+## Release-candidate fuzzing
+
+The actual citation extraction and reference formatter receive synthetic generated answers against a one-document fixture. Unknown citations cannot become sources, repeated citations must deduplicate, and the original answer is retained. No model, embedding service, database or document download is used.
+
+[RC-only fuzzing policy, local reproduction and failure handling](docs/fuzzing.md).
+
+Release artifact identity, build receipts and local reproduction are documented in
+[release packaging](docs/release-packaging.md).
