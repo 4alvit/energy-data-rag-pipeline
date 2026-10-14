@@ -29,7 +29,24 @@
         "-max_len=4096"
       ],
       "seconds": 60,
-      "corpus": "fuzz/corpus/citations"
+      "corpus": "fuzz/corpus/citations",
+      "instrumentation": [
+        {
+          "module": "energy_rag.retrieval.citations",
+          "functions": [
+            "extract_citations",
+            "format_citations"
+          ]
+        }
+      ]
     }
+  ],
+  "preflight-paths": [
+    ".github/requirements-fuzz.in",
+    "Dockerfile",
+    "fuzz",
+    "pyproject.toml",
+    "src",
+    "uv.lock"
   ]
 }
