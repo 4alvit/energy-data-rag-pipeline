@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import urlparse
+from urllib.request import BaseHandler
 
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document
@@ -181,15 +182,26 @@ def _build_post_content(post: dict) -> str:
     return "\n".join(parts)
 
 
+class _HTTPOnlyHandler(BaseHandler):
+    """Apply the Requests-era HTTP(S) boundary to initial URLs and redirects."""
+
+    def default_open(self, request):
+        if request.type not in {"http", "https"}:
+            raise URLError("Forum fetching supports only HTTP and HTTPS URLs")
+
+
 def fetch_forum_url(url: str, selectors: dict | None = None) -> Iterator[Document]:
     """Fetch and parse forum page from URL."""
-    forum_type = detect_forum_type(url)
-    sel = selectors or FORUM_SELECTORS.get(forum_type, FORUM_SELECTORS["default"])
-
     try:
-        with https_opener().open(url, timeout=30) as response:
+        if urlparse(url).scheme not in {"http", "https"}:
+            raise URLError("Forum fetching supports only HTTP and HTTPS URLs")
+        forum_type = detect_forum_type(url)
+        sel = selectors or FORUM_SELECTORS.get(forum_type, FORUM_SELECTORS["default"])
+        opener = https_opener()
+        opener.add_handler(_HTTPOnlyHandler())
+        with opener.open(url, timeout=30) as response:
             content_bytes = response.read()
-    except (URLError, OSError) as e:
+    except (URLError, OSError, ValueError) as e:
         logger.error("Failed to fetch %s: %s", url, e)
         return
 

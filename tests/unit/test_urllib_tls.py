@@ -3,6 +3,7 @@
 import importlib.util
 import socket
 import ssl
+import urllib.request
 from pathlib import Path
 from urllib.error import URLError
 
@@ -130,3 +131,57 @@ def test_forum_uses_verified_connection(chains, monkeypatch, case, version):
     assert bool(documents) == case.startswith("strong")
     if documents:
         assert "test question" in documents[0].page_content
+
+
+@pytest.mark.parametrize("scheme", ["file", "data", "ftp"])
+def test_forum_rejects_non_http_initial_urls(tmp_path, scheme, monkeypatch):
+    def forbidden_handler(*args, **kwargs):
+        pytest.fail("non-HTTP protocol handler must not run")
+
+    monkeypatch.setattr(urllib.request.FTPHandler, "ftp_open", forbidden_handler)
+    monkeypatch.setattr(urllib.request.FileHandler, "file_open", forbidden_handler)
+    monkeypatch.setattr(urllib.request.DataHandler, "data_open", forbidden_handler)
+    private = tmp_path / "private.html"
+    private.write_text("<h1>Private</h1><main>local synthetic secret</main>")
+    url = {
+        "file": private.as_uri(),
+        "data": "data:text/html,<main>local synthetic secret</main>",
+        "ftp": "ftp://127.0.0.1:1/private.html",
+    }[scheme]
+    assert (
+        list(
+            fetch_forum_url(
+                url,
+                {
+                    "title": "h1",
+                    "question": "main",
+                    "answer": ".answer",
+                    "metadata": {},
+                },
+            )
+        )
+        == []
+    )
+
+
+@pytest.mark.parametrize(
+    "target", ["file:///etc/passwd", "ftp://127.0.0.1:1/private.html", "data:text/html,secret"]
+)
+def test_forum_rejects_non_http_redirects(chains, monkeypatch, target):
+    def forbidden_handler(*args, **kwargs):
+        pytest.fail("redirect must not reach a non-HTTP protocol handler")
+
+    monkeypatch.setattr(urllib.request.FTPHandler, "ftp_open", forbidden_handler)
+    monkeypatch.setattr(urllib.request.FileHandler, "file_open", forbidden_handler)
+    monkeypatch.setattr(urllib.request.DataHandler, "data_open", forbidden_handler)
+    monkeypatch.setenv("SSL_CERT_FILE", str(chains["strong"][2]))
+    with peer(chains["strong"], ssl.TLSVersion.TLSv1_3, redirect=target) as (port, observed):
+        assert list(fetch_forum_url(f"https://localhost:{port}")) == []
+    assert observed["application_bytes"]
+
+
+@pytest.mark.parametrize(
+    "url", ["relative/forum.html", "//example.invalid/forum", "http://[invalid"]
+)
+def test_forum_cleanly_rejects_missing_or_malformed_scheme(url):
+    assert list(fetch_forum_url(url)) == []

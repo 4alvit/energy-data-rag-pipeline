@@ -26,7 +26,9 @@ not establish the strength of inbound TLS terminators or unrelated transports.
 The MCP RagApiClient, Victron content downloader and forum loader use owned stdlib TLS
 contexts. They preserve default CA/hostname checks, environment proxy routing,
 redirect handling and request timeouts. The verified origin chain is checked
-before the HTTP request or query payload. Plain HTTP remains available for the
+before the HTTP request or query payload. Forum ingestion accepts only HTTP(S)
+URLs, including redirect targets; local files, FTP and data URLs are rejected.
+Plain HTTP remains available for the
 existing local API deployment; this policy does not add TLS to an HTTP URL.
 
 Run `scripts/fetch_victron_content.py` in the installed project environment
