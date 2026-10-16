@@ -1,5 +1,9 @@
 # Release-candidate fuzz testing
 
+See the [illustrated RC fuzzing process and verified rollout results](https://github.com/victron-venus/venus-os-ci-toolkit/blob/main/docs/rc-fuzzing-results.md)
+for the shared release flow, evidence requirements and a dated cross-project
+snapshot. The project-specific scope and reproduction guidance below still apply.
+
 ## Scope and assertions
 
 **citations.** The actual citation extraction and reference formatter receive synthetic generated answers against a one-document fixture. Unknown citations cannot become sources, repeated citations must deduplicate, and the original answer is retained. No model, embedding service, database or document download is used.
