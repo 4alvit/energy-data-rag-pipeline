@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.14] - 2026-10-16
+
+### Security
+
+Require MCP Python SDK 2.2.0 or newer and lock the container dependency to 2.2.0, fixing unbounded stateful Streamable HTTP session retention (CVE-2026-59951 / GHSA-84m7-p3x7-pcfv). Verify session capacity, deletion and expiry through the production MCP server's HTTP application.
+
+### Upgrade
+
+Replace the API/MCP container or upgrade the installed `mcp` extra. Existing stateful HTTP sessions may need to reconnect after restart or 30 minutes without an active request. The SDK caps simultaneous sessions at 10,000 and returns HTTP 503 when full; ended and expired sessions release capacity. Stdio transport and stored RAG data are unchanged. Continue restricting the MCP endpoint to trusted clients.
+
 ## [0.2.13] - 2026-10-14
 
 ### Changed

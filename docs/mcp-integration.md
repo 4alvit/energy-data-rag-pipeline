@@ -366,6 +366,14 @@ curl -X POST http://localhost:8000/query -H 'Content-Type: application/json' \
 
 ## Security notes
 
+- Version 0.2.14 requires MCP Python SDK 2.2.0 or newer, which fixes
+  [unbounded stateful HTTP session retention](https://github.com/advisories/GHSA-84m7-p3x7-pcfv).
+  The deployed SDK expires sessions after 30 minutes without an active request
+  and caps concurrent sessions at 10,000. A full server returns HTTP 503 for
+  new sessions; deleting or expiring a session frees its slot. Clients must
+  initialize a new session after an expired session returns HTTP 404.
+  Open streams and requests keep a session active. These limits do not affect
+  stdio and do not replace access controls or deployment resource limits.
 - The MCP server trusts whoever can reach it. Keep `8800` off the public
   internet; bind `127.0.0.1` locally or restrict access at the NAS firewall.
 - No secrets flow through the MCP layer — it only forwards queries to the

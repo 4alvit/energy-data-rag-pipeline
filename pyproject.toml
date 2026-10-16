@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "energy-rag-pipeline"
-version = "0.2.13"
+version = "0.2.14"
 description = "RAG pipeline for Victron/energy documentation with pgvector and LangChain"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -66,7 +66,7 @@ anthropic = [
     "langchain-anthropic>=0.2.0",
 ]
 mcp = [
-    "mcp[cli]>=2.0.0",
+    "mcp[cli]>=2.2.0",
 ]
 
 [project.scripts]
