@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.15] - 2026-10-17
+
+### Changed
+
+- Add illustrated RC fuzzing process and results documentation and link it from the project guides.
+
+### Upgrade
+
+This documentation release preserves runtime behavior and configuration from 0.2.14, including its MCP session-retention fix. Keep the existing deployment and configuration rollback procedure.
+
+### Security
+
+No new runtime security fix is claimed. The release documents the existing bounded, source-bound RC fuzzing checks and their limits.
+
 ## [0.2.14] - 2026-10-16
 
 ### Security
