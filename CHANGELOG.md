@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.16] - 2026-10-18
+
+### Changed
+
+- Refresh pinned shared review, merge and RC fuzzing workflows while preserving the required CI gates.
+
+### Upgrade
+
+This is a maintenance release with no configuration or data migration. Preserve installation-specific configuration and retain the previous package for rollback.
+
+### Security
+
+Required CI, dependency checks and source-bound RC qualification remain enabled. No additional runtime security fix is claimed.
+
 ## [0.2.15] - 2026-10-17
 
 ### Changed
