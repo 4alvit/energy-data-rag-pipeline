@@ -1,7 +1,7 @@
 # Pinned upstream FCC 5.14.0 runtime graph with targeted fixes for the security
-# advisories affecting anyio, cryptography, pygments, python-multipart, starlette and urllib3.
+# advisories affecting aiohttp, anyio, cryptography, pygments, python-multipart, starlette and urllib3.
 aiohappyeyeballs==2.6.1
-aiohttp==3.14.3
+aiohttp==3.14.4
 aiosignal==1.4.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
@@ -85,5 +85,5 @@ uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
 watchfiles==1.1.1
 websockets==15.0.1
 win32-setctime==1.2.0 ; sys_platform == 'win32'
-yarl==1.22.0
+yarl==1.25.1
 free-claude-code @ https://github.com/Alishahryar1/free-claude-code/archive/9b334dedfec842a4ad340a95f6332ac5acf2bb7f.tar.gz

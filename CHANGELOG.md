@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update the locked aiohttp client to 3.14.4 and its yarl URL dependency to 1.25.1.
+- Update aiohttp to 3.14.4 and its required yarl URL dependency to 1.25.1 in both the application and FCC dependency locks.
 - Validate the complete documentation corpus in a temporary directory so tests detect stale content without modifying the checkout.
 
 ### Upgrade
