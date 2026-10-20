@@ -13,6 +13,7 @@ from energy_rag import __version__
 from energy_rag.api.routes import health, ingest, query
 from energy_rag.api.schemas import ErrorResponse
 from energy_rag.config import settings
+from energy_rag.deployment_policy import validate_llm
 from energy_rag.retrieval.factory import get_embeddings, get_llm, get_vector_store
 from energy_rag.storage.pgvector import ensure_vector_extension, init_database
 
@@ -42,20 +43,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
     logger.info("Starting Energy RAG Pipeline")
 
+    # Policy violations must fail before initialization, not trigger optional-LLM fallback.
+    validate_llm(settings.llm_provider, settings.ollama_base_url, settings.strict_local_profile)
+
     # Initialize database (audit/ingestion_runs schema + pgvector extension)
     await init_database()
     await ensure_vector_extension()
 
     # Initialize components (embeddings model download happens here)
     get_embeddings()
-    get_vector_store()
+    vector_store = get_vector_store()
+    llm = None
     try:
-        get_llm()
-    except Exception as exc:  # LLM is optional until first query
+        llm = get_llm()
+    except Exception as exc:  # Retrieval remains available without generation.
         logger.warning("LLM unavailable at startup: %s", exc)
 
     # Set dependencies for query route
-    query.set_dependencies(get_vector_store(), get_llm())
+    query.set_dependencies(vector_store, llm)
 
     logger.info("Energy RAG Pipeline started")
 
