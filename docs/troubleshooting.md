@@ -26,8 +26,16 @@ Nothing passed the similarity threshold. Checklist:
 
 ### 503 on /query
 
-RAG components not initialized — check startup errors in
-`docker compose logs api`. Typical cause: Ollama down at startup.
+Check startup errors in `docker compose logs api`. An `LLM unavailable at
+startup` warning means the generation client could not be initialized, for
+example because an optional provider package or required credentials are
+missing. With the database and embedding model available, `POST /query/search`
+continues to work, while `POST /query` returns 503.
+
+Fix the reported dependency or configuration problem and restart the API.
+Incoming queries do not retry client initialization. Violations of
+`STRICT_LOCAL_PROFILE` stop startup instead of entering this retrieval-only
+mode.
 
 ## Ingestion
 

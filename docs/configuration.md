@@ -25,6 +25,13 @@ All settings are environment variables (prefix-less), also loadable from a
 Provider packages (`langchain-openai`, `langchain-anthropic`) are optional
 extras: `[...--extra openai --extra anthropic]`; the Docker image ships both.
 
+If the LLM client cannot be initialized, the API can still start with a working
+database and embedding model. `POST /query/search` remains available, while
+`POST /query` returns 503. Client initialization is attempted once during
+startup, with no retry on incoming queries; fix the dependency or configuration
+and restart the API to enable generation. Invalid strict local deployment
+settings still abort startup before database or model initialization.
+
 ### Free LLM via Free Claude Code (FCC)
 
 [Free Claude Code](https://github.com/Alishahryar1/free-claude-code) exposes a
