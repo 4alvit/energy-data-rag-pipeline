@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.17] - 2026-10-20
+
+### Changed
+
+- Update aiohttp to 3.14.4 and its required yarl URL dependency to 1.25.1 in both the application and FCC dependency locks.
+- Validate the complete documentation corpus in a temporary directory so tests detect stale content without modifying the checkout.
+
+### Upgrade
+
+Use the existing update procedure, preserve local configuration and retain the previous immutable package for rollback. No configuration migration is required.
+
+### Security
+
+Required dependency, source and release checks remain enabled. This maintenance beta does not claim a new application vulnerability fix or device acceptance.
+
 ## [0.2.16] - 2026-10-18
 
 ### Changed
