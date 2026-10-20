@@ -1,31 +1,34 @@
 """Unit tests for the docs corpus exporter."""
 
 import json
-import subprocess
-import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EXPORTER = REPO_ROOT / "scripts" / "export_docs_corpus.py"
 CORPUS = REPO_ROOT / "docs-corpus" / "corpus.json"
 
 
-def test_corpus_is_fresh_and_loadable():
+def test_corpus_is_fresh_and_loadable(tmp_path, monkeypatch, capsys):
     """Corpus must exist, parse, and match current docs."""
     assert CORPUS.exists(), "docs-corpus/corpus.json missing - run the exporter"
+    original = CORPUS.read_bytes()
+    original_readme = CORPUS.with_name("README.md").read_bytes()
+    records = json.loads(original)
 
-    records = json.loads(CORPUS.read_text(encoding="utf-8"))
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
+    import export_docs_corpus
 
-    # Regenerate in-memory and compare counts to catch stale artifacts.
-    result = subprocess.run(
-        [sys.executable, str(EXPORTER)],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    fresh = json.loads(CORPUS.read_text(encoding="utf-8"))
-    assert len(fresh) == len(records)
-    assert f"{len(fresh)} records" in result.stdout
+    monkeypatch.setattr(export_docs_corpus, "OUT_DIR", tmp_path)
+    assert export_docs_corpus.main() == 0
+    fresh = json.loads((tmp_path / "corpus.json").read_text(encoding="utf-8"))
+    # Only generation timestamps may differ; equal counts can hide stale content.
+    assert [
+        {key: value for key, value in record.items() if key != "created_at"} for record in fresh
+    ] == [
+        {key: value for key, value in record.items() if key != "created_at"} for record in records
+    ]
+    assert f"{len(fresh)} records" in capsys.readouterr().out
+    assert CORPUS.read_bytes() == original
+    assert CORPUS.with_name("README.md").read_bytes() == original_readme
 
     for record in fresh:
         assert record["title"], "every record needs a title"
@@ -34,8 +37,8 @@ def test_corpus_is_fresh_and_loadable():
         assert "project-docs" in record["tags"]
 
 
-def test_split_sections_hierarchies():
-    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+def test_split_sections_hierarchies(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
     from export_docs_corpus import split_sections
 
     md = "# Title\n\nintro\n\n## Alpha\n\nalpha body\n\n### Deep\n\ndeep body\n\n## Beta\n\nbeta body\n"
