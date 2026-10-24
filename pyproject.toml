@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "energy-rag-pipeline"
-version = "0.2.17"
+version = "0.2.18"
 description = "RAG pipeline for Victron/energy documentation with pgvector and LangChain"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -67,6 +67,7 @@ anthropic = [
 ]
 mcp = [
     "mcp[cli]>=2.2.0",
+    "opentelemetry-api>=1.45.1",
 ]
 
 [project.scripts]

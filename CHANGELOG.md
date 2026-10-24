@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.18]
+
+### Changed
+
+- Require OpenTelemetry API 1.45.1 or newer for the MCP extra and refresh its runtime lock.
+- Add inbound metadata regression checks for normal, boundary-size and oversized tracestate values.
+
+### Upgrade
+
+Install the new package or container through the existing release procedure. Preserve local configuration and credentials, and retain the previous immutable artifacts for rollback. Publishing this release does not deploy it.
+
+### Security
+
+Fix [GHSA-xcq7-p3pf-p88h](https://github.com/open-telemetry/opentelemetry-python/security/advisories/GHSA-xcq7-p3pf-p88h), an availability issue caused by unbounded tracestate parsing in OpenTelemetry API through 1.45.0. The optional MCP service parses W3C context from inbound request metadata. The patched parser bounds oversized metadata while retaining valid parent trace context.
+
 ## [0.2.17] - 2026-10-20
 
 ### Changed
