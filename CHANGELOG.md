@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.19]
+
+### Changed
+
+- Update the FCC sidecar's locked dnspython dependency to 2.9.0 while retaining the existing universal platform dependencies.
+- Update Pylint to 4.0.9 in the development lock and pre-commit hook.
+
+### Upgrade
+
+Use the existing package and container update procedure. Preserve local configuration, credentials and data volumes, and retain the previous immutable artifacts for rollback. Rebuild the FCC sidecar to receive its dependency update; publishing this release does not deploy it.
+
+### Security
+
+- dnspython 2.9.0 fixes excessive CPU consumption when parsing untrusted DNS messages ([GHSA-45c3-73f7-pv4m](https://github.com/rthalley/dnspython/security/advisories/GHSA-45c3-73f7-pv4m)). This update applies to the FCC sidecar dependency set.
+- Pylint 4.0.9 replaces its pickle-backed cache format ([GHSA-22qq-2fwx-7p67](https://github.com/pylint-dev/pylint/security/advisories/GHSA-22qq-2fwx-7p67)). The development-tool issue requires an attacker-writable cache; no active compromise is asserted.
+
 ## [0.2.18]
 
 ### Changed
