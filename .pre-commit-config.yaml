@@ -26,7 +26,7 @@ repos:
   - id: ruff-format
 
 - repo: https://github.com/pylint-dev/pylint
-  rev: v3.3.0
+  rev: v4.0.9
   hooks:
   - id: pylint
     args: [--rcfile=pyproject.toml]
