@@ -84,7 +84,7 @@ urllib3==2.8.0
 uvicorn==0.52.3
 uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'
 watchfiles==1.1.1
-websockets==15.0.1
+websockets==17.4
 win32-setctime==1.2.0 ; sys_platform == 'win32'
 yarl==1.25.1
 free-claude-code @ https://github.com/Alishahryar1/free-claude-code/archive/9b334dedfec842a4ad340a95f6332ac5acf2bb7f.tar.gz
