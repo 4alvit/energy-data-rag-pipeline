@@ -50,8 +50,8 @@ backups. Follow that procedure before applying the changed storage manifests.
 ## Installation channel
 
 Use a reviewed [GitHub release](https://github.com/4alvit/energy-data-rag-pipeline/releases)
-or a source checkout pinned to its tag. As of 12 October 2026, stable is
-`v0.2.11`; `energy-rag-pipeline` is the Python project name, but no distribution
+or a source checkout pinned to its tag. As of 3 November 2026, stable is
+`v0.2.20`; `energy-rag-pipeline` is the Python project name, but no distribution
 with that name is published on PyPI. `pip install energy-rag-pipeline` is not a
 supported installation command.
 
@@ -63,7 +63,7 @@ images or deploy services. See [release and image operations](docs/release-and-i
 
 ```bash
 # Clone the explicit stable source release and enter
-git clone --branch v0.2.11 --depth 1 https://github.com/4alvit/energy-data-rag-pipeline.git
+git clone --branch v0.2.20 --depth 1 https://github.com/4alvit/energy-data-rag-pipeline.git
 cd energy-data-rag-pipeline
 
 # Copy env template

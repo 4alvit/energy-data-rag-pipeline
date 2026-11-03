@@ -14,17 +14,19 @@ there for ingestion. The `mcp` service exposes streamable-HTTP MCP on port
 
 ## Production images
 
-Releases publish multi-arch images (linux/amd64 + linux/arm64) to GHCR:
+GitHub releases provide checked OCI archives for Linux AMD64 and ARM64. GHCR
+publication is a separate verified promotion of accepted stable bytes; it does
+not run automatically on a branch or tag push. The verified `0.2.20` images are:
 
-```
-ghcr.io/4alvit/energy-data-rag-pipeline:<version>   # e.g. 0.2.0
-ghcr.io/4alvit/energy-data-rag-pipeline:<major.minor>
-ghcr.io/4alvit/energy-data-rag-pipeline:latest
-ghcr.io/4alvit/free-claude-code:<version>           # bundled FCC proxy
+```text
+ghcr.io/4alvit/energy-data-rag-pipeline:0.2.20
+ghcr.io/4alvit/free-claude-code:0.2.20
 ```
 
-Published by `.github/workflows/docker-publish.yml` on every `v*` tag and on
-pushes to `main`. See [release-and-images.md](release-and-images.md).
+Use an explicit accepted version or its verified manifest digest. Versioned
+publication does not move floating `latest` or `major.minor` tags. Deployments
+remain an explicit operator action. See [release-and-images.md](release-and-images.md)
+and the [release runbook](release-workflow.md).
 
 ## Synology deployment via deploy.sh
 
@@ -95,7 +97,7 @@ ssh synology 'sudo mkdir -p /volume1/docker/energy-rag/sql'
 rsync -av deploy/docker-compose.prod.yml sql/init.sql synology:/tmp/erag/
 ssh synology 'sudo mv /tmp/erag/* /volume1/docker/energy-rag/'
 ssh synology "cd /volume1/docker/energy-rag && \
-  TAG=0.2.0 POSTGRES_PASSWORD=secret sudo -E \
+  TAG=0.2.20 POSTGRES_PASSWORD=secret sudo -E \
   docker compose -f docker-compose.prod.yml up -d"
 ```
 
@@ -170,9 +172,11 @@ Notes:
 ## Upgrades & rollback
 
 ```bash
-TAG=v0.2.1 deploy/deploy.sh       # move to a version
-TAG=v0.2.0 deploy/deploy.sh       # roll back — pgdata volume persists
+TAG=0.2.20 deploy/deploy.sh      # use the verified numeric image version
 ```
+
+For rollback, set `TAG` to a previously accepted numeric image version after
+reviewing its security and data compatibility. The `pgdata` volume persists.
 
 Schema changes are additive (`sql/init.sql` runs only on first DB creation);
 check CHANGELOG.md for migration notes between versions.
