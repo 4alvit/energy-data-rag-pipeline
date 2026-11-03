@@ -9,11 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Require websockets 17.4 or newer and update the main RAG application lock from 15.0.1 to 17.4. This covers the LangGraph SDK and LangSmith dependency graph independently of the FCC sidecar and preserves the security floor during fresh resolution, without changing their versions or enabling the optional OpenAI realtime extra.
 - Update the FCC sidecar's hash-locked websockets dependency from 15.0.1 to 17.4, which bounds fragmented-message buffering ([GHSA-6m5v-9gmr-5665](https://github.com/python-websockets/websockets/security/advisories/GHSA-6m5v-9gmr-5665)). Keep the exact FCC upstream source and every other FCC dependency unchanged. The pinned default FCC application exposes HTTP routes; this corrects an installed dependency without asserting that an affected WebSocket receive path was exposed.
 
 ### Upgrade
 
-Use the existing package and container update procedure to obtain the rebuilt FCC sidecar. No configuration or data migration is required. Preserve local configuration, credentials and data volumes, and retain the previous immutable artifacts for rollback. Publication does not deploy the update.
+Use the existing package and container update procedure to obtain the rebuilt RAG application and FCC sidecar. No configuration or data migration is required. Preserve local configuration, credentials and data volumes, and retain the previous immutable artifacts for rollback. Publication does not deploy the update.
 
 ## [0.2.19]
 
