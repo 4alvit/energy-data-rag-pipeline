@@ -1,6 +1,47 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "local>victron-venus/venus-os-ci-toolkit:renovate-ci"
+    "local>victron-venus/venus-os-ci-toolkit:renovate-fleet"
+  ],
+  "enabledManagers": [
+    "github-actions",
+    "custom.regex",
+    "custom.jsonata",
+    "docker-compose",
+    "dockerfile",
+    "pep621",
+    "pip-compile",
+    "pip_requirements"
+  ],
+  "pip_requirements": {
+    "managerFilePatterns": [
+      "/(^|/)requirements[^/]*\\.(txt|pip)$/"
+    ],
+    "ignorePaths": [
+      "**/vendor/**",
+      "**/node_modules/**",
+      "**/fixtures/**",
+      "deploy/fcc/requirements-build.txt",
+      "deploy/fcc/requirements.txt"
+    ]
+  },
+  "pip-compile": {
+    "managerFilePatterns": [
+      "/^deploy/fcc/requirements\\-build\\.txt$/",
+      "/^deploy/fcc/requirements\\.txt$/"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Compiled requirements are regenerated with their recorded uv pip compile command.",
+      "matchFileNames": [
+        "deploy/fcc/requirements-build.txt",
+        "deploy/fcc/requirements.txt"
+      ],
+      "enabled": false,
+      "matchManagers": [
+        "pip_requirements"
+      ]
+    }
   ]
 }
