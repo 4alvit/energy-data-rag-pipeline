@@ -15,14 +15,16 @@
   ],
   "pip_requirements": {
     "managerFilePatterns": [
-      "/(^|/)requirements[^/]*\\.(txt|pip)$/"
+      "/(^|/)requirements[^/]*\\.(txt|pip)$/",
+      "/^\\.github/requirements\\-fuzz\\.in$/"
     ],
     "ignorePaths": [
       "**/vendor/**",
       "**/node_modules/**",
       "**/fixtures/**",
       "deploy/fcc/requirements-build.txt",
-      "deploy/fcc/requirements.txt"
+      "deploy/fcc/requirements.txt",
+      ".github/requirements-fuzz.txt"
     ]
   },
   "pip-compile": {
@@ -42,6 +44,34 @@
       "matchManagers": [
         "pip_requirements"
       ]
+    },
+    {
+      "description": "Regenerate this platform-qualified dependency lock from its exact requirements input without executing build hooks.",
+      "matchManagers": [
+        "pip_requirements"
+      ],
+      "matchFileNames": [
+        ".github/requirements-fuzz.in"
+      ],
+      "constraints": {
+        "uv": "0.13.4"
+      },
+      "postUpgradeTasks": {
+        "commands": [
+          "uv pip compile .github/requirements-fuzz.in --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --no-build --output-file .github/requirements-fuzz.txt"
+        ],
+        "fileFilters": [
+          ".github/requirements-fuzz.txt"
+        ],
+        "executionMode": "update",
+        "workingDirTemplate": ".",
+        "installTools": {
+          "uv": {}
+        }
+      }
     }
+  ],
+  "ignorePaths": [
+    ".github/requirements-fuzz.txt"
   ]
 }

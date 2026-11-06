@@ -169,3 +169,15 @@ policy-authorized new run; never reset the ledger or mix earlier-attempt package
 Historical RC promotion keeps its accepted source policy. Keep this explicit
 inventory aligned with producer changes; it does not replace package-format,
 signature or device acceptance checks.
+
+## Updating the fuzz dependencies
+
+Renovate updates the exact Atheris/LangChain requirement input and regenerates
+its Linux/Python 3.12 lock with the literal allowlisted uv 0.13.4 command below.
+Shell execution and source builds are disabled. This preserves the existing
+Linux closure without introducing unrelated universal platform markers.
+Review the input and hash-locked output together and run the normal fuzz checks.
+
+```sh
+uv pip compile .github/requirements-fuzz.in --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --no-build --output-file .github/requirements-fuzz.txt
+```
