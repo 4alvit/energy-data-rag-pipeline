@@ -1057,6 +1057,21 @@
     "accepted": true
   },
   {
+    "title": "Release-candidate fuzz testing > Updating the fuzz dependencies",
+    "body": "Renovate updates the exact Atheris/LangChain requirement input and regenerates\nits Linux/Python 3.12 lock with the literal allowlisted uv 0.13.4 command below.\nShell execution and source builds are disabled. This preserves the existing\nLinux closure without introducing unrelated universal platform markers.\nReview the input and hash-locked output together and run the normal fuzz checks.\n\n```sh\nuv pip compile .github/requirements-fuzz.in --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --no-build --output-file .github/requirements-fuzz.txt\n```",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/fuzzing.md",
+    "author": "project-docs",
+    "created_at": "2026-11-06T01:17:45+00:00",
+    "tags": [
+      "project-docs",
+      "fuzzing",
+      "release-candidate-fuzz-testing",
+      "updating-the-fuzz-dependencies"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
     "title": "Energy Data RAG Pipeline — Documentation Index",
     "body": "RAG (Retrieval-Augmented Generation) pipeline over Victron Energy documentation\nand community knowledge. FastAPI + LangChain + pgvector (PostgreSQL 16),\npackaged as multi-arch Docker images (linux/amd64 + linux/arm64).",
     "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/index.md",
