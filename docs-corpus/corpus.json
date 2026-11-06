@@ -2065,7 +2065,7 @@
   },
   {
     "title": "CI and release operations — 4alvit/energy-data-rag-pipeline",
-    "body": "The source of truth is `.release-policy.json`. `quality-gate.yml` runs the callable\nvalidation workflows and produces the required **CI gate** status on every PR\nand merge-queue commit. Superseded PR runs are cancelled. Without an explicit\n`change_scope` policy, every change keeps full CI and normal release preparation.\nDocumentation-only skipping requires that explicit opt-in. When enabled, the\nChange scope job checks the complete Git diff first; the gate accepts only proven\ndocumentation skips. Missing, failed or unexpectedly skipped workflows fail the\ngate. Unknown files, incomplete history, code, workflows and lockfile changes run\nfull validation.\n\nThe optional `change_scope` policy provides exact `documentation_paths`, exact\n`required_paths` for documentation used as a build input, and\n`always_validate_workflows` for independently required checks. Documentation paths\ncannot exempt source, tests, fixtures, build configuration or dependencies.\nManual dispatch, scheduled runs and release qualification remain full. Only with\nexplicit `change_scope` opt-in does a documentation-only push stop before release\npreparation, version allocation, artifact builds or publication. This does not\nchange the configured nightly policy.",
+    "body": "The source of truth is `.release-policy.json`. `quality-gate.yml` runs the callable\nvalidation workflows and produces the required **CI gate** status on every PR\nand merge-queue commit. Superseded PR runs are cancelled. Without an explicit\n`change_scope` policy, every change keeps full CI and normal release preparation.\nDocumentation-only skipping requires that explicit opt-in. When enabled, the\nChange scope job checks the complete Git diff first; the gate accepts only proven\ndocumentation skips. Missing, failed or unexpectedly skipped workflows fail the\ngate. Unknown files, incomplete history, code, workflows and lockfile changes run\nfull validation.\n\nThe optional `change_scope` policy provides exact `documentation_paths`, exact\n`required_paths` for documentation used as a build input, and\n`always_validate_workflows` for independently required checks. Documentation paths\ncannot exempt source, tests, fixtures, build configuration or dependencies.\nDocumentation-only skipping applies to PR and merge-queue validation. Main-branch\npushes, manual dispatch, scheduled runs and release qualification retain the full\nrelease path, even with `change_scope` enabled. This preserves security and contract\nchecks and avoids leaving an in-flight release without a replacement when the\ndefault branch advances. The configured nightly policy is unchanged.",
     "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-workflow.md",
     "author": "project-docs",
     "created_at": "2026-11-05T23:32:09+00:00",
@@ -2176,6 +2176,21 @@
       "release-workflow",
       "import-the-same-oci-bytes,-then-optionally-move-latest-after-all-version-tags-exist.",
       "automatic-version-preparation"
+    ],
+    "score": 10,
+    "accepted": true
+  },
+  {
+    "title": "CI and release operations — 4alvit/energy-data-rag-pipeline > Import the same OCI bytes, then optionally move latest after all version tags exist. > Regenerating documentation scope safely",
+    "body": "Follow the [shared CI Toolkit regeneration guide](https://github.com/victron-venus/venus-os-ci-toolkit/blob/main/docs/CHANGE_SCOPE.md#regenerate-documentation-scope-safely)\nfrom this repository's root. It defines the supported pinned generator, required\nclean-checkout checks, and scope-only update and verification commands.\n\nThe existing `toolkit_revision` fields record historical release-engine\nprovenance; this narrow scope migration does not claim to replace that engine.\nThe always-run workflow contract `test_release_scope.py` rejects the older\n`FORCE_FULL: 'false'` output. Main-branch release qualification stays full even\nwhen pull requests containing only ordinary documentation use lightweight CI.",
+    "url": "https://github.com/4alvit/energy-data-rag-pipeline/blob/main/docs/release-workflow.md",
+    "author": "project-docs",
+    "created_at": "2026-11-05T23:32:09+00:00",
+    "tags": [
+      "project-docs",
+      "release-workflow",
+      "import-the-same-oci-bytes,-then-optionally-move-latest-after-all-version-tags-exist.",
+      "regenerating-documentation-scope-safely"
     ],
     "score": 10,
     "accepted": true
