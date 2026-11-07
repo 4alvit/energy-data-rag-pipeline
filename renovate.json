@@ -1,6 +1,90 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "local>victron-venus/venus-os-ci-toolkit:renovate-ci"
+    "local>victron-venus/venus-os-ci-toolkit:renovate-fleet"
+  ],
+  "enabledManagers": [
+    "github-actions",
+    "custom.regex",
+    "custom.jsonata",
+    "docker-compose",
+    "dockerfile",
+    "pep621",
+    "pip-compile",
+    "pip_requirements"
+  ],
+  "pip_requirements": {
+    "managerFilePatterns": [
+      "/(^|/)requirements[^/]*\\.(txt|pip)$/",
+      "/^\\.github/requirements\\-fuzz\\.in$/"
+    ],
+    "ignorePaths": [
+      "**/vendor/**",
+      "**/node_modules/**",
+      "**/fixtures/**",
+      "deploy/fcc/requirements-build.txt",
+      "deploy/fcc/requirements.txt",
+      ".github/requirements-fuzz.txt"
+    ]
+  },
+  "pip-compile": {
+    "managerFilePatterns": [
+      "/^deploy/fcc/requirements\\-build\\.txt$/",
+      "/^deploy/fcc/requirements\\.txt$/"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Compiled requirements are regenerated with their recorded uv pip compile command.",
+      "matchFileNames": [
+        "deploy/fcc/requirements-build.txt",
+        "deploy/fcc/requirements.txt"
+      ],
+      "enabled": false,
+      "matchManagers": [
+        "pip_requirements"
+      ]
+    },
+    {
+      "description": "Regenerate this platform-qualified dependency lock from its exact requirements input without executing build hooks.",
+      "matchManagers": [
+        "pip_requirements"
+      ],
+      "matchFileNames": [
+        ".github/requirements-fuzz.in"
+      ],
+      "constraints": {
+        "uv": "0.13.4"
+      },
+      "postUpgradeTasks": {
+        "commands": [
+          "uv pip compile .github/requirements-fuzz.in --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --no-build --output-file .github/requirements-fuzz.txt"
+        ],
+        "fileFilters": [
+          ".github/requirements-fuzz.txt"
+        ],
+        "executionMode": "update",
+        "workingDirTemplate": ".",
+        "installTools": {
+          "uv": {}
+        }
+      }
+    },
+    {
+      "description": "FCC currently pins aiohttp 3.14.4, whose released metadata requires multidict <7. Requalify this bound with the parent graph before moving to multidict 7, including any security fix requiring that major.",
+      "matchManagers": [
+        "pip-compile"
+      ],
+      "matchFileNames": [
+        "deploy/fcc/requirements.in"
+      ],
+      "matchPackageNames": [
+        "multidict"
+      ],
+      "allowedVersions": "<7"
+    }
+  ],
+  "ignorePaths": [
+    ".github/requirements-fuzz.txt"
   ]
 }

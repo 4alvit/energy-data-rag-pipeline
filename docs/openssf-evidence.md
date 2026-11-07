@@ -25,7 +25,7 @@ The project is developed publicly in [Git](https://github.com/4alvit/energy-data
 - [Test suite](../tests) and [CI workflows](../.github/workflows)
 - [Local CI entry point](../scripts/ci.sh)
 - [CodeQL analysis](../.github/workflows/codeql.yml)
-- [Dependency update configuration](../.github/dependabot.yml)
+- [Dependency update configuration](../renovate.json)
 
 The local gate runs locked dependencies, Ruff, formatting, Pylint and the test/database harness. See `docs/local-ci.md` for PostgreSQL/pgvector prerequisites. Use fixture documents and mocked model calls where specified; external model access, downloaded corpora and physical deployment are separate checks.
 
