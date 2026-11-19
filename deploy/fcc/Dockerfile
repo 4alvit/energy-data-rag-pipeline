@@ -8,7 +8,7 @@
 # requirements.in; the build backend is separately hash-locked.
 # Admin UI (model/provider config) is served on the same port as the proxy.
 
-FROM python:3.14-slim@sha256:0741d101873c12ab927e6f8653feb8862b9bd58771177acb1b885b95141f91b4
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 
 ARG FCC_REF=9b334dedfec842a4ad340a95f6332ac5acf2bb7f
 
