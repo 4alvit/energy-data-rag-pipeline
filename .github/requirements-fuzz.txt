@@ -240,9 +240,9 @@ jsonpointer==3.2.1 \
     --hash=sha256:47c846513b3a4ec46eecef1105207fba075e2a3659048e362bd7daff0fc33342 \
     --hash=sha256:b19ee68644e9ffb51440448d8f7811af2b7406eea1db90603e93f5849323119a
     # via jsonpatch
-langchain-core==1.8.0 \
-    --hash=sha256:89732f9e7d311de9913ba22caf921c72520145a829f05ec1d9c85013e904213c \
-    --hash=sha256:8c571299ae83acec89599cbbb6890018f54225da336a6e315c9e882dd5da6502
+langchain-core==1.8.3 \
+    --hash=sha256:4d2764d2ab4faf3fec9f17515f15c0d3485a6ef55f75c088f6929944225ff578 \
+    --hash=sha256:ce448f055dd2cf1db7def27d2b6c2902519369642e8b89d08255c7ca7abd6b36
     # via -r .github/requirements-fuzz.in
 langchain-protocol==0.0.21 \
     --hash=sha256:04b3e80852233a8db39b39d3ad2438d892531dc0ecd41459e857a139ee0e601c \
