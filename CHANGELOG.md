@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.2.21] - Unreleased
+
+### Changed
+
+- keep local instruction files out of git.
+- add a navigation index for docs/.
+- isolate every auto-merge base edit (#238).
+- preserve merge identity and withdrawn auto-merge requests (#237).
+- skip heavy qualification for ordinary documentation (#231).
+- Complete dependency update migration to Renovate (#230).
+- Keep dependency sources and generated exports coupled (#229).
+- Complete dependency update migration to Renovate (#228).
+- recheck automatic publication source (#226).
+- reconcile lost creation responses (#225).
+
+### Upgrade
+
+Use the existing package and container update procedure to obtain the rebuilt RAG application and FCC sidecar. No configuration or data migration is required. Preserve local configuration, credentials and data volumes, and retain the previous immutable artifacts for rollback. Publication does not deploy the update.
+
+### Security
+
+- Require websockets 17.4 or newer and update the main RAG application lock from 15.0.1 to 17.4. This covers the LangGraph SDK and LangSmith dependency graph independently of the FCC sidecar and preserves the security floor during fresh resolution, without changing their versions or enabling the optional OpenAI realtime extra.
+- Update the FCC sidecar's hash-locked websockets dependency from 15.0.1 to 17.4, which bounds fragmented-message buffering ([GHSA-6m5v-9gmr-5665](https://github.com/python-websockets/websockets/security/advisories/GHSA-6m5v-9gmr-5665)). Keep the exact FCC upstream source and every other FCC dependency unchanged. The pinned default FCC application exposes HTTP routes; this corrects an installed dependency without asserting that an affected WebSocket receive path was exposed.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
