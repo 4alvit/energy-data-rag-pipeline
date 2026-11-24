@@ -133,4 +133,4 @@ jobs:
           path: ${{ inputs.release_plan_artifact != '' && 'release-assets/package/*' || 'release-dist/*' }}
           if-no-files-found: error
           compression-level: 0
-          retention-days: 14
+          retention-days: 3
