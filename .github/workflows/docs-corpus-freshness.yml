@@ -1,0 +1,107 @@
+name: Docs corpus freshness
+'on':
+  push:
+    branches:
+      - main
+    paths:
+      - docs/**
+      - README.md
+      - docs-corpus/**
+      - scripts/export_docs_corpus.py
+  schedule:
+    - cron: 23 5 * * *
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: docs-corpus-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PYTHON_VERSION: '3.12'
+  REFRESH_BRANCH: automation/docs-corpus-refresh
+jobs:
+  freshness:
+    name: Regenerate docs-corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Snapshot the committed corpus
+        run: cp docs-corpus/corpus.json "$RUNNER_TEMP/corpus-before.json"
+      - name: Regenerate with the project exporter
+        run: python3 scripts/export_docs_corpus.py
+      - name: Compare content, ignoring generation timestamps
+        id: drift
+        run: |
+          python3 - "$RUNNER_TEMP/corpus-before.json" <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          def normalized(path):
+              records = json.loads(Path(path).read_text(encoding="utf-8"))
+              return [
+                  {key: value for key, value in record.items() if key != "created_at"}
+                  for record in records
+              ]
+
+          before = normalized(sys.argv[1])
+          after = normalized("docs-corpus/corpus.json")
+          drifted = before != after
+          print(f"committed={len(before)} regenerated={len(after)} drifted={drifted}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"drifted={'true' if drifted else 'false'}\n")
+          PY
+      - name: Restore regenerated timestamps when the content is unchanged
+        if: ${{ steps.drift.outputs.drifted == 'false' }}
+        run: |
+          git checkout -- docs-corpus
+          echo "Corpus matches docs/*.md and README.md." >> "$GITHUB_STEP_SUMMARY"
+      - name: Open or update the refresh pull request
+        if: ${{ steps.drift.outputs.drifted == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.BOT_PAT || github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$REFRESH_BRANCH"
+          git add docs-corpus/corpus.json docs-corpus/README.md
+          git commit -m "docs: regenerate documentation corpus"
+          gh auth setup-git
+          git push --force origin "$REFRESH_BRANCH"
+          body=$(cat <<'MD'
+          `scripts/export_docs_corpus.py` regenerated `docs-corpus/corpus.json`, because the committed corpus no longer matched `docs/*.md` and `README.md`.
+
+          `tests/unit/test_docs_corpus.py::test_corpus_is_fresh_and_loadable` fails on stale content, and that gate runs before publishing, so a stale corpus blocks the release pipeline (nightly builds stalled from 2026-11-21 to 2026-11-24 this way). Merge this refresh to unblock releases.
+          MD
+          )
+          number=$(gh pr list --head "$REFRESH_BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --body "$body"
+            url=$(gh pr view "$number" --json url --jq .url)
+          else
+            url=$(gh pr create --base "$DEFAULT_BRANCH" --head "$REFRESH_BRANCH" \
+              --title "docs: regenerate documentation corpus" --body "$body")
+          fi
+          {
+            echo "### Documentation corpus is stale"
+            echo "The committed corpus no longer matches \`docs/*.md\` or \`README.md\`."
+            echo "Refresh pull request: $url"
+            echo "This job fails on purpose: publishing stops on a stale corpus, so drift must be visible the moment it lands."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
