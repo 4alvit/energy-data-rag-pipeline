@@ -155,23 +155,41 @@ class NativeValidationTest(unittest.TestCase):
         self.assertEqual(build["native"]["runs-on"], "${{ matrix.runner }}")
         self.assertNotIn("qemu", json.dumps(build).lower())
 
-    def test_downloads_are_exact_current_attempt_current_run_cells(self):
+    def test_downloads_select_each_cells_newest_uploaded_attempt(self):
+        """A failed-only rerun rebuilds some cells; the others stay uploadable."""
         jobs = workflow("release-build.yml")["jobs"]
         downloads = [
             step["with"]
             for step in jobs["package"]["steps"]
             if step.get("uses", "").startswith("actions/download-artifact@")
-            and step["with"]["name"].startswith("native-cell-")
+            and step["with"].get("pattern", "").startswith("native-cell-")
         ]
-        expected = [
-            {
-                "name": f"native-cell-{product}-{arch}-attempt-${{{{ github.run_attempt }}}}",
-                "path": f"native-inputs/{product}-{arch}",
-            }
-            for product in ("rag", "fcc")
-            for arch in ("amd64", "arm64")
+        self.assertEqual(
+            downloads,
+            [
+                {
+                    "pattern": "native-cell-*-attempt-*",
+                    "path": "native-attempts",
+                    "merge-multiple": "false",
+                }
+            ],
+        )
+        select = [
+            step["run"]
+            for step in jobs["package"]["steps"]
+            if step.get("name") == "Select each cell's newest uploaded attempt"
         ]
-        self.assertEqual(downloads, expected)
+        self.assertEqual(len(select), 1)
+        self.assertIn("native_containers.py select", select[0])
+        self.assertIn("--inputs native-attempts", select[0])
+        self.assertIn("--output native-inputs", select[0])
+        assemble = [
+            step["run"]
+            for step in jobs["package"]["steps"]
+            if step.get("name") == "Assemble exact candidate assets without rebuilding"
+        ]
+        self.assertEqual(len(assemble), 1)
+        self.assertIn("--inputs native-inputs", assemble[0])
         uploads = [
             step["with"]
             for job in jobs.values()
@@ -184,8 +202,8 @@ class NativeValidationTest(unittest.TestCase):
             self.assertEqual(upload["if-no-files-found"], "error")
             self.assertNotIn("overwrite", upload)
 
-    def test_release_collection_downloads_only_the_current_attempt(self):
-        """Receipts bind the producing attempt, so a retry cannot reuse older assets."""
+    def test_release_collection_accepts_earlier_attempts_of_the_same_run(self):
+        """A failed-only rerun keeps the uploads of the jobs that succeeded."""
         jobs = workflow("release-pipeline.yml")["jobs"]
         for name in ("candidate", "final"):
             with self.subTest(job=name):
@@ -199,10 +217,7 @@ class NativeValidationTest(unittest.TestCase):
                     downloads,
                     [
                         {
-                            "pattern": (
-                                "release-assets*-run-${{ github.run_id }}"
-                                "-attempt-${{ github.run_attempt }}"
-                            ),
+                            "pattern": ("release-assets*-run-${{ github.run_id }}-attempt-*"),
                             "path": ".release-download",
                             "merge-multiple": "false",
                         }

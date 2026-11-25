@@ -145,6 +145,28 @@ class ClientTest(unittest.TestCase):
                 client.arguments()
             self.assertEqual(error.exception.code, 2)
 
+    def test_collection_uses_each_artifacts_newest_uploaded_attempt(self):
+        """A failed-only rerun uploads only some artifacts; older ones still count."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            download = root / ".release-download"
+            for attempt, payload in ((1, b"older"), (2, b"newer")):
+                directory = download / f"release-assets-run-7-attempt-{attempt}"
+                directory.mkdir(parents=True)
+                (directory / "package.tar.gz").write_bytes(payload)
+            fuzz = download / "release-assets-fuzz-run-7-attempt-1"
+            fuzz.mkdir()
+            (fuzz / "fuzz-report.json").write_bytes(b"report")
+            with mock.patch.object(client, "ROOT", root):
+                client.collect_assets()
+            assets = root / ".release-assets"
+            self.assertEqual(
+                sorted(path.name for path in assets.iterdir()),
+                ["fuzz-report.json", "package.tar.gz"],
+            )
+            self.assertEqual((assets / "package.tar.gz").read_bytes(), b"newer")
+            self.assertEqual((assets / "fuzz-report.json").read_bytes(), b"report")
+
     def test_missing_download_names_the_rerun_that_restores_it(self):
         """A failed-only rerun downloads nothing; report that, not a bad path."""
         with tempfile.TemporaryDirectory() as temp:

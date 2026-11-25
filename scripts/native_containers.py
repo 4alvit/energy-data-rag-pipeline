@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -25,6 +26,14 @@ PRODUCTS = {
     "fcc": "energy-rag-fcc-container.oci.tar",
 }
 ARCHITECTURES = {"amd64": ("x86_64", "X64"), "arm64": ("aarch64", "ARM64")}
+CELL_UPLOAD = re.compile(
+    r"native-cell-(?P<cell>(?:"
+    + "|".join(PRODUCTS)
+    + r")-(?:"
+    + "|".join(ARCHITECTURES)
+    + r"))-attempt-(?P<attempt>[1-9][0-9]*)\Z",
+    re.ASCII,
+)
 SBOM = "https://spdx.dev/Document"
 SMOKE_SCOPE = {"rag": "offline-http-lifespan-disabled", "fcc": "offline-default-server"}
 
@@ -376,7 +385,12 @@ def build(root, output, product, arch, version, channel):
 
 
 def validate_receipt(receipt, expected, product, arch, inputs_digest, checked):
-    """Reject stale attempts, wrong products, untested inputs or rewritten bytes."""
+    """Reject stale runs, wrong products, untested inputs or rewritten bytes.
+
+    A failed-only rerun rebuilds only the failed cells, so a surviving cell
+    keeps the attempt that produced it. The receipt must belong to this run at
+    or before the current attempt; another run or a later attempt cannot match.
+    """
     required = {
         **expected,
         "product": product,
@@ -385,8 +399,15 @@ def validate_receipt(receipt, expected, product, arch, inputs_digest, checked):
         "inputs_sha256": inputs_digest,
         **checked,
     }
+    produced = receipt.get("run_attempt")
     oci.require(
-        all(receipt.get(key) == value for key, value in required.items()),
+        all(receipt.get(key) == value for key, value in required.items() if key != "run_attempt"),
+        "Native receipt binding differs",
+    )
+    oci.require(
+        isinstance(produced, str)
+        and re.fullmatch(r"[1-9][0-9]*", produced) is not None
+        and int(produced) <= int(required["run_attempt"]),
         "Native receipt binding differs",
     )
     machine, runner_arch = ARCHITECTURES[arch]
@@ -411,6 +432,46 @@ def validate_receipt(receipt, expected, product, arch, inputs_digest, checked):
         and all(isinstance(value, str) and value for value in tools.values()),
         "Missing native toolchain proof",
     )
+
+
+def select(inputs, output):
+    """Copy each native cell's newest uploaded attempt into flat assembly inputs.
+
+    A failed-only rerun executes only the cells that failed, so the remaining
+    uploads stay in an earlier attempt of the same run. Attempts are never
+    merged: every cell comes from exactly one complete upload.
+    """
+    oci.require(
+        not inputs.is_symlink() and inputs.is_dir(), "Native uploads must be a regular directory"
+    )
+    chosen = {}
+    for entry in sorted(inputs.iterdir(), key=lambda path: path.name):
+        oci.require(
+            not entry.is_symlink() and entry.is_dir(), "Native upload must be a regular directory"
+        )
+        matched = CELL_UPLOAD.fullmatch(entry.name)
+        oci.require(matched is not None, f"Unexpected native upload name: {entry.name}")
+        cell, attempt = matched["cell"], int(matched["attempt"])
+        if cell not in chosen or attempt > chosen[cell][0]:
+            chosen[cell] = (attempt, entry)
+    oci.require(
+        set(chosen) == {f"{product}-{arch}" for product in PRODUCTS for arch in ARCHITECTURES},
+        "Native upload inventory differs",
+    )
+    oci.require(not output.exists(), "Native assembly inputs must not exist")
+    output.mkdir(parents=True)
+    selected = {}
+    for cell, (attempt, source) in sorted(chosen.items()):
+        target = output / cell
+        target.mkdir()
+        for path in sorted(source.iterdir()):
+            oci.require(
+                not path.is_symlink() and path.is_file(),
+                "Native upload must contain regular files",
+            )
+            shutil.copyfile(path, target / path.name)
+        selected[cell] = attempt
+    return selected
 
 
 def assemble(root, inputs, output, version, channel):
@@ -476,15 +537,20 @@ def assemble(root, inputs, output, version, channel):
 def main():
     """Expose build and offline assembly to the reusable workflow."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["build", "assemble"])
-    parser.add_argument("--version", required=True)
-    parser.add_argument("--channel", required=True)
+    parser.add_argument("operation", choices=["build", "assemble", "select"])
+    parser.add_argument("--version", default="")
+    parser.add_argument("--channel", default="")
     parser.add_argument("--product", choices=PRODUCTS)
     parser.add_argument("--arch", choices=ARCHITECTURES)
     parser.add_argument("--inputs", type=Path, default=Path("native-inputs"))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    if args.operation == "select":
+        select(args.inputs.absolute(), args.output.resolve())
+        return
+    if not args.version or not args.channel:
+        parser.error(f"{args.operation} requires --version and --channel")
     if args.operation == "build":
         if not args.product or not args.arch:
             parser.error("build requires --product and --arch")

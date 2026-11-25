@@ -124,7 +124,11 @@ class CurrentBuildInputsTests(unittest.TestCase):
         self.assertEqual(result["producer"], expected)
         version_receipt.verify_receipt_evidence(result, self.plan, self.output.name,
                                                 self.policy, expected)
-        for changed in ({"run_id": 124}, {"run_attempt": 1},
+        # A failed-only rerun publishes packages that an earlier attempt built.
+        version_receipt.verify_receipt_evidence(
+            {**result, "producer": {**expected, "run_attempt": 1}},
+            self.plan, self.output.name, self.policy, expected)
+        for changed in ({"run_id": 124}, {"run_attempt": 3},
                         {"repository": "other/project"}, {"source_sha": "b" * 40}):
             with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, "producer attempt"):
                 version_receipt.verify_receipt_evidence(

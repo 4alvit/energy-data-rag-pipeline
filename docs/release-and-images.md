@@ -35,8 +35,10 @@ Both images run as their default non-root user with networking disabled:
   version and waits for `/health`. This does not exercise an external LLM provider.
 
 Offline assembly requires all four cells from the same source, input fingerprint,
-version, workflow run and attempt. It preserves these release asset names, each
-containing `linux/amd64` and `linux/arm64` plus their attestations:
+version and workflow run; each cell may come from the newest attempt that
+uploaded it, and assembly selects it before validating the receipt. It preserves
+these release asset names, each containing `linux/amd64` and `linux/arm64` plus
+their attestations:
 
 - `energy-data-rag-pipeline-container.oci.tar`
 - `energy-rag-fcc-container.oci.tar`
@@ -58,9 +60,12 @@ through the mandatory Release gate; they do not run a duplicate matrix inside CI
 Unknown entry workflows or events fail closed.
 
 Artifact names and receipts bind the exact workflow attempt. After a transient
-runner, network or GitHub service failure, use **Re-run all jobs**. Re-running only
-failed jobs cannot reuse successful native cells from an earlier attempt. Preserve
-the failed attempt's logs and diagnose deterministic failures before retrying.
+runner, network or GitHub service failure, **Re-run failed jobs** rebuilds only
+the failed cells and assembly reuses the newest successful upload of every other
+cell from the same run; each receipt must belong to that run at or before the
+current attempt. Use **Re-run all jobs** when retained uploads expired or the
+whole assembly must be replaced. Preserve the failed attempt's logs and diagnose
+deterministic failures before retrying.
 
 Stable promotion copies verified RC bytes without rebuilding. GitHub releases do
 not deploy production or automatically push these containers to GHCR. The separate

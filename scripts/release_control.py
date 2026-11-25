@@ -1339,11 +1339,8 @@ def _execution_timestamp(value: object, label: str) -> datetime:
         raise ReleaseError(f"Missing or malformed {label}") from error
 
 
-def _require_fresh_job_timing(job: JSONObject, boundary: datetime) -> None:
-    """A cloned success is not proof that its job or steps executed this attempt."""
-    start = _execution_timestamp(job.get("started_at"), "job start")
-    end = _execution_timestamp(job.get("completed_at"), "job completion")
-    require(boundary <= start <= end, "Successful job predates the current release attempt")
+def _require_job_steps(job: JSONObject, start: datetime, end: datetime) -> None:
+    """Require an executed step list contained in its job's reported interval."""
     steps = job.get("steps")
     require(isinstance(steps, list) and bool(steps), "Successful job lacks execution steps")
     require(all(isinstance(step, dict) for step in steps), "Malformed job execution step")
@@ -1357,10 +1354,51 @@ def _require_fresh_job_timing(job: JSONObject, boundary: datetime) -> None:
                 "Executed step lies outside the current job interval")
 
 
+def _require_fresh_job_timing(job: JSONObject, boundary: datetime) -> None:
+    """A cloned success is not proof that its job or steps executed this attempt."""
+    start = _execution_timestamp(job.get("started_at"), "job start")
+    end = _execution_timestamp(job.get("completed_at"), "job completion")
+    require(boundary <= start <= end, "Successful job predates the current release attempt")
+    _require_job_steps(job, start, end)
+
+
+def _same_execution(job: JSONObject, recorded: JSONObject) -> bool:
+    """Match the execution record Actions copies unchanged into a later attempt."""
+    keys = ("name", "head_sha", "started_at", "completed_at", "steps")
+    return all(job.get(key) == recorded.get(key) for key in keys)
+
+
+def _earlier_attempt_jobs(
+    gh: GitHub, run_id: int, sha: str, attempt: int
+) -> list[JSONObject]:
+    """Read earlier attempts' successful executions of this same run.
+
+    Unreadable or unrelated attempt data authorizes nothing: the caller then
+    rejects the predating job rather than accepting an unverifiable success.
+    """
+    recorded: list[JSONObject] = []
+    for earlier in range(1, attempt):
+        try:
+            reported = gh.pages(f"actions/runs/{run_id}/attempts/{earlier}/jobs", "jobs")
+        except (ReleaseError, ValueError, OSError):
+            continue
+        if not isinstance(reported, list):
+            continue
+        recorded.extend(
+            job for job in reported
+            if isinstance(job, dict)
+            and job.get("head_sha") == sha
+            and job.get("run_attempt") == earlier
+            and job.get("status") == "completed"
+            and job.get("conclusion") == "success"
+        )
+    return recorded
+
+
 def require_current_attempt_jobs(
     gh: GitHub, run_id: int, sha: str, attempt: int, jobs: list[JSONObject]
 ) -> None:
-    """Keep first-attempt compatibility; reruns need fresh successful executions."""
+    """Require fresh executions, or the unchanged copy of an earlier attempt."""
     if attempt == 1:
         return
     raw_detail = gh.api(f"actions/runs/{run_id}/attempts/{attempt}")
@@ -1370,12 +1408,26 @@ def require_current_attempt_jobs(
             and detail.get("head_sha") == sha and detail.get("path") == WORKFLOW,
             "Release attempt metadata identity mismatch")
     boundary = _execution_timestamp(detail.get("run_started_at"), "release attempt start")
+    earlier: list[JSONObject] | None = None
     for job in jobs:
         if job.get("status") != "completed" or job.get("conclusion") != "success":
             continue
         require(job.get("head_sha") == sha and job.get("run_attempt") == attempt,
                 "Successful job differs from the current release attempt")
-        _require_fresh_job_timing(job, boundary)
+        if _execution_timestamp(job.get("started_at"), "job start") >= boundary:
+            _require_fresh_job_timing(job, boundary)
+            continue
+        # Re-running only failed jobs leaves successful producers in place. Actions
+        # reports them again under this attempt number with their original clocks,
+        # so accept exactly the execution the earlier attempt recorded, never an
+        # arbitrary stale success.
+        if earlier is None:
+            earlier = _earlier_attempt_jobs(gh, run_id, sha, attempt)
+        require(any(_same_execution(job, recorded) for recorded in earlier),
+                "Successful job predates the current release attempt")
+        start = _execution_timestamp(job.get("started_at"), "job start")
+        end = _execution_timestamp(job.get("completed_at"), "job completion")
+        _require_job_steps(job, start, end)
 
 
 def release_gate_ready(

@@ -206,15 +206,17 @@ older candidates without fuzz evidence can no longer qualify for promotion.
 
 Missing, failed, cancelled or unexpectedly skipped RC fuzz checks block the
 release gate. Signing also waits for successful RC fuzzing. The publisher checks
-the report against the actual source manifest and attempt before publication;
-stable verification checks the original RC job and policy. Normal byte promotion
+the report against the actual source manifest, run and attempt — its own or an
+earlier attempt of the same run — before publication; stable verification checks
+the original RC job and policy. Normal byte promotion
 does not rerun mutation. Projects already requiring final package rebuilds retain
 their separate final-build acceptance rules; fuzzing does not waive those rules.
 
 On failure, download diagnostics, reproduce the smallest input against the same
 source, fix the production bug and commit a regression seed/test. Publish a new
-RC from the fixed source. If retrying an infrastructure failure, rerun all jobs
-so the report and release evidence refer to one coherent attempt.
+RC from the fixed source. If retrying an infrastructure failure, re-running
+failed jobs keeps the report and release evidence from the attempt that produced
+them; run all jobs when the retained artifacts expired.
 
 Successful generated corpora are retained for inspection, not automatically
 restored into later RCs. Review and minimize useful inputs offline with the

@@ -343,10 +343,47 @@ class CurrentAttemptFreshnessTests(unittest.TestCase):
         rc.require_current_attempt_jobs(self.gh, 123, SHA, 1, [{"conclusion": "success"}])
         self.gh.api.assert_not_called()
 
-    def test_cloned_success_rejected_even_with_new_attempt_number(self):
+    def test_unrecorded_predating_success_rejected_even_with_new_attempt_number(self):
         self.job.update(started_at="2026-11-03T01:01:00Z", completed_at="2026-11-03T01:05:00Z")
         with self.assertRaisesRegex(rc.ReleaseError, "predates"):
             self.check()
+
+    def recorded(self):
+        """Return the execution an earlier attempt of this run reported."""
+        job = {
+            **self.job,
+            "run_attempt": 1,
+            "started_at": "2026-11-03T01:01:00Z",
+            "completed_at": "2026-11-03T01:05:00Z",
+            "steps": [
+                {
+                    **self.job["steps"][0],
+                    "started_at": "2026-11-03T01:02:00Z",
+                    "completed_at": "2026-11-03T01:04:00Z",
+                }
+            ],
+        }
+        return job
+
+    def test_failed_only_rerun_accepts_the_execution_it_reports_unchanged(self):
+        """Actions repeats an earlier attempt's success with its original clocks."""
+        recorded = self.recorded()
+        self.gh.pages.side_effect = lambda path, field=None: (
+            [recorded] if "attempts/1/" in path else []
+        )
+        self.check([{**recorded, "run_attempt": 2}])
+        self.gh.pages.assert_called_once_with("actions/runs/123/attempts/1/jobs", "jobs")
+
+    def test_copied_success_must_match_its_recorded_steps_exactly(self):
+        """A stale success cannot borrow an earlier attempt's timestamps alone."""
+        recorded = self.recorded()
+        copied = {**recorded, "run_attempt": 2}
+        copied["steps"] = [{**recorded["steps"][0], "started_at": "2026-11-03T01:03:00Z"}]
+        self.gh.pages.side_effect = lambda path, field=None: (
+            [recorded] if "attempts/1/" in path else []
+        )
+        with self.assertRaisesRegex(rc.ReleaseError, "predates"):
+            self.check([copied])
 
     def test_old_steps_cannot_hide_under_new_job_timestamps(self):
         self.job["steps"][0].update(
@@ -526,7 +563,8 @@ class GateIntegrationTests(unittest.TestCase):
         gh.pages.return_value = [gate, validation]
         with self.assertRaisesRegex(rc.ReleaseError, "predates"):
             rc.release_gate_ready(gh, 123, SHA, 2)
-        gh.pages.assert_called_once_with("actions/runs/123/attempts/2/jobs", "jobs")
+        gh.pages.assert_any_call("actions/runs/123/attempts/2/jobs", "jobs")
+        gh.pages.assert_any_call("actions/runs/123/attempts/1/jobs", "jobs")
         validation.update(started_at=gate["started_at"], completed_at=gate["completed_at"])
         self.assertTrue(rc.release_gate_ready(gh, 123, SHA, 2))
 

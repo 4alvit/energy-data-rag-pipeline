@@ -185,7 +185,7 @@ class NativeContainersTest(unittest.TestCase):
         receipt, checked = self.receipt()
         native.validate_receipt(receipt, EXPECTED, "rag", "amd64", self.inputs_digest, checked)
         for key, value in {
-            "run_attempt": "1",
+            "run_attempt": "3",
             "run_id": "999",
             "revision": "b" * 40,
             "version": "0.2.9",
@@ -384,15 +384,25 @@ class NativeContainersTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "platform"):
             self.assemble()
 
-    def test_modified_receipt_attempt_rejected_before_output(self):
+    def test_receipt_from_another_run_or_later_attempt_rejected_before_output(self):
         self.prepare_assembly()
         path = self.inputs / "rag-amd64/receipt.json"
-        receipt = json.loads(path.read_text())
-        receipt["run_attempt"] = "1"
-        path.write_text(json.dumps(receipt))
-        with self.assertRaisesRegex(ValueError, "binding"):
-            self.assemble()
+        original = json.loads(path.read_text())
+        for changed in ({"run_attempt": "3"}, {"run_id": "9999"}):
+            with self.subTest(changed=changed):
+                path.write_text(json.dumps({**original, **changed}))
+                with self.assertRaisesRegex(ValueError, "binding"):
+                    self.assemble()
         self.package.assert_not_called()
+
+    def test_receipt_from_an_earlier_attempt_of_the_same_run_is_accepted(self):
+        """A failed-only rerun assembles the cells that already succeeded."""
+        self.prepare_assembly()
+        path = self.inputs / "rag-arm64/receipt.json"
+        original = json.loads(path.read_text())
+        path.write_text(json.dumps({**original, "run_attempt": "1"}))
+        self.assemble()
+        self.assertTrue((self.output / "SHA256SUMS").is_file())
 
 
 if __name__ == "__main__":
