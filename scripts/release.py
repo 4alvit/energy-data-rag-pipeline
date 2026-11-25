@@ -28,7 +28,6 @@ VERSION = re.compile(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\Z", re.ASC
 RC = re.compile(
     r"v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-rc\.([1-9]\d*)\Z", re.ASCII
 )
-ATTEMPT = re.compile(r"-attempt-([1-9]\d*)\Z", re.ASCII)
 
 
 def run(*args: str, capture: bool = False) -> str:
@@ -243,43 +242,34 @@ def package(args: argparse.Namespace, config: dict) -> None:
     run("bash", script, version, args.channel)
 
 
-def artifact_attempt(file: Path, source: Path) -> int:
-    """Read the attempt that uploaded one downloaded artifact, if it names one."""
-    parts = file.relative_to(source).parts
-    match = ATTEMPT.search(parts[0]) if len(parts) > 1 else None
-    return int(match[1]) if match else 0
-
-
 def collect_assets() -> None:
-    """Flatten downloaded CI artifacts using only fixed repository directories.
-
-    A failed-only rerun keeps the builds it did not repeat, so one run can
-    expose artifacts from several attempts. Use the newest attempt for each
-    asset, while still refusing two different sources inside one attempt.
-    """
+    """Flatten downloaded CI artifacts using only fixed repository directories."""
     source = ROOT / ".release-download"
     destination = ROOT / ".release-assets"
-    if source.is_symlink() or not source.is_dir() or destination.is_symlink():
+    if source.is_symlink() or destination.is_symlink():
         raise ValueError(
             "Artifact directories must be real directories inside the checkout"
         )
-    files = {}
+    if not source.is_dir():
+        raise ValueError(
+            "No build artifacts were downloaded for this attempt; a failed-only "
+            "rerun leaves the jobs that upload them untouched, so re-run all jobs"
+        )
+    files = []
+    seen = set()
     for file in source.rglob("*"):
         if file.is_symlink():
             raise ValueError(f"Symlink asset: {file}")
         if not file.is_file():
             continue
-        attempt = artifact_attempt(file, source)
-        name = file.name.casefold()
-        current = files.get(name)
-        if current is None or attempt > current[0]:
-            files[name] = (attempt, file)
-        elif attempt == current[0]:
+        if file.name.casefold() in seen:
             raise ValueError(f"Duplicate asset basename across platforms: {file.name}")
+        seen.add(file.name.casefold())
+        files.append(file)
     if not files:
         raise ValueError("No build assets were downloaded")
     destination.mkdir(exist_ok=False)
-    for _, file in sorted(files.values(), key=lambda entry: entry[1].name):
+    for file in files:
         shutil.copyfile(file, destination / file.name)
 
 

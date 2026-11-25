@@ -110,17 +110,13 @@ and independent semantic assertions alongside the existing unit tests.
 ## Release artifact selection and retries
 
 Fresh release package uploads and RC fuzz evidence use
-`-run-<run_id>-attempt-<run_attempt>` names. Candidate and final collection read
-every attempt of the current run and keep each asset from the newest attempt that
-uploaded it, so **Re-run failed jobs** reuses the run's existing builds instead of
-failing on a missing download directory. Two different sources for one asset
-inside a single attempt remain an error, and no artifact from another run is ever
-selected.
+`-run-<run_id>-attempt-<run_attempt>` names. Candidate and final collection
+select only matching artifacts from the current run and attempt.
 
 Before publication starts, use **Re-run all jobs** only if the allocator and
-release policy permit reuse of that run's reservation. A failed-only or
-individual retry cannot import inputs from an older run or from another commit;
-recreate every required input whenever the release policy requires a fresh build.
+release policy permit reuse of that run's reservation. Recreate every required
+input in the same attempt; failed-only or individual retries can leave inputs
+missing, and older artifacts must not fill those gaps.
 
 For a fresh candidate or final build, once publication has started
 (`begin_publication`), or its external publication result is partial or uncertain,

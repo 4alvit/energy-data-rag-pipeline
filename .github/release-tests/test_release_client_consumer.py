@@ -145,52 +145,19 @@ class ClientTest(unittest.TestCase):
                 client.arguments()
             self.assertEqual(error.exception.code, 2)
 
-    def test_collection_prefers_the_newest_attempt_of_the_same_run(self):
-        """Take each asset once when several attempts of one run are downloaded."""
+    def test_missing_download_names_the_rerun_that_restores_it(self):
+        """A failed-only rerun downloads nothing; report that, not a bad path."""
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            for attempt, payload in ((1, b"first attempt"), (2, b"rebuilt attempt")):
-                directory = (
-                    root / ".release-download"
-                    / f"release-assets-run-7-attempt-{attempt}"
-                )
-                directory.mkdir(parents=True)
-                (directory / "app.tar.gz").write_bytes(payload)
-            with mock.patch.object(client, "ROOT", root):
-                client.collect_assets()
-            self.assertEqual(
-                (root / ".release-assets/app.tar.gz").read_bytes(), b"rebuilt attempt"
-            )
-
-    def test_collection_accepts_the_earlier_attempt_of_a_failed_only_rerun(self):
-        """A rerun of only failed jobs must still find this run's builds."""
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            directory = root / ".release-download/release-assets-run-7-attempt-1"
-            directory.mkdir(parents=True)
-            (directory / "app.tar.gz").write_bytes(b"first attempt")
-            with mock.patch.object(client, "ROOT", root):
-                client.collect_assets()
-            self.assertEqual(
-                (root / ".release-assets/app.tar.gz").read_bytes(), b"first attempt"
-            )
-
-    def test_collection_rejects_two_sources_inside_one_attempt(self):
-        """Attempt selection must not weaken the cross-platform collision check."""
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            for platform in ("rag", "fcc"):
-                directory = (
-                    root / ".release-download"
-                    / f"release-assets-{platform}-run-7-attempt-2"
-                )
-                directory.mkdir(parents=True)
-                (directory / "checksums.txt").write_text(platform)
             with (
                 mock.patch.object(client, "ROOT", root),
-                self.assertRaisesRegex(ValueError, "Duplicate asset basename"),
+                self.assertRaises(ValueError) as error,
             ):
                 client.collect_assets()
+            message = str(error.exception)
+            self.assertIn("re-run all jobs", message)
+            self.assertNotIn("real directories", message)
+            self.assertFalse((root / ".release-assets").exists())
 
     def test_collection_rejects_symlink_escape_before_creating_output(self):
         """Reject a download-root symlink rather than reading outside the checkout."""
