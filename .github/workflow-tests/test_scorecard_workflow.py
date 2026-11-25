@@ -117,6 +117,11 @@ class ScorecardWorkflowTests(unittest.TestCase):
     def test_pinned_action_build_is_accepted_by_the_guard(self):
         check_scorecard_pin(self.workflow, load_guard().VERSIONS)
 
+    def test_no_stale_build_stays_accepted_by_the_guard(self):
+        versions = load_guard().VERSIONS
+        check_scorecard_pin(self.workflow, versions)
+        self.assertEqual(set(versions), set(SCORECARD_ACTION_BUILDS.values()))
+
     def test_action_bump_without_recorded_build_fails(self):
         for step in self.workflow["jobs"]["scorecard"]["steps"]:
             if step["uses"].startswith("ossf/scorecard-action@"):

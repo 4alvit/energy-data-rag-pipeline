@@ -23,14 +23,18 @@ SHA = "a" * 40
 
 
 PINS = {
-    # Hard-coded so the contract is checked against the upstream builds rather
-    # than against the validator's own table.
-    "v5.6.0": "61e84743356275f6ffca23b1b2f2cb945e19eb96",
+    # Hard-coded so the contract is checked against the upstream build rather
+    # than against the validator's own table. One entry also means an action
+    # rollback to an older Scorecard build has to fail the guard.
     "v5.7.0": "d7552fb3cdc05e9f6426177d3328887304fce554",
+}
+ROLLED_BACK = {
+    "version": "v5.6.0",
+    "commit": "61e84743356275f6ffca23b1b2f2cb945e19eb96",
 }
 
 
-def complete(version: str = "v5.6.0") -> dict[str, Any]:
+def complete(version: str = "v5.7.0") -> dict[str, Any]:
     """Build one pinned build's output independently of the validator's constants."""
     return {
         "repo": {"name": f"github.com/{REPO}", "commit": SHA},
@@ -70,20 +74,14 @@ class ScorecardJSONTests(unittest.TestCase):
             result["checks"][0]["score"] = score
             guard.validate(result, REPO, SHA)
 
-    def test_every_pinned_build_is_accepted_with_its_own_commit(self) -> None:
-        for version, commit in PINS.items():
-            with self.subTest(version=version):
-                guard.validate(complete(version), REPO, SHA)
-                mismatched = complete(version)
-                mismatched["scorecard"]["commit"] = "b" * 40
+    def test_the_pinned_build_is_accepted_and_a_rollback_fails(self) -> None:
+        guard.validate(complete(), REPO, SHA)
+        for change in ({"commit": "b" * 40}, ROLLED_BACK):
+            with self.subTest(change=change):
+                rolled_back = complete()
+                rolled_back["scorecard"].update(change)
                 with self.assertRaises(ValueError):
-                    guard.validate(mismatched, REPO, SHA)
-            other = next(name for name, sha in PINS.items() if sha != commit)
-            with self.subTest(crossed=other):
-                crossed = complete(version)
-                crossed["scorecard"]["commit"] = PINS[other]
-                with self.assertRaises(ValueError):
-                    guard.validate(crossed, REPO, SHA)
+                    guard.validate(rolled_back, REPO, SHA)
 
     def test_upstream_packaging_not_applicable_is_preserved(self) -> None:
         result = complete()
@@ -185,11 +183,15 @@ class ScorecardJSONTests(unittest.TestCase):
                 {"version": "v5.5.0", "commit": "c395761df6afe1a69e476bc60a013a94bcbc153f"},
             ),
             ("scorecard", {"version": "v5.6.0", "commit": "b" * 40}),
+            ("scorecard", ROLLED_BACK),
             (
                 "scorecard",
                 {"version": "v5.7.0", "commit": "61e84743356275f6ffca23b1b2f2cb945e19eb96"},
             ),
-            ("scorecard", {"version": "v5.6.0", "commit": PINS["v5.6.0"], "extra": True}),
+            (
+                "scorecard",
+                {"version": "v5.7.0", "commit": PINS["v5.7.0"], "extra": True},
+            ),
             ("scorecard", ["v5.6.0"]),
         ):
             with self.subTest(field=field, value=value):
