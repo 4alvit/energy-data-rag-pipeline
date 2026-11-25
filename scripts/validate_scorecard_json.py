@@ -32,12 +32,10 @@ CHECKS = frozenset(
     }
 )
 # The full upstream JSON includes all 18 checks, regardless of SARIF policy.
-# Each entry is a Scorecard build the pinned action embeds. A new upstream build
-# must be revalidated against the checks and result fields below before listing.
-VERSIONS = {
-    "v5.6.0": "61e84743356275f6ffca23b1b2f2cb945e19eb96",
-    "v5.7.0": "d7552fb3cdc05e9f6426177d3328887304fce554",
-}
+# Exactly the Scorecard build the pinned action embeds is accepted: a new
+# upstream build must be revalidated against the checks and result fields below
+# before it is listed, and rolling the action back to an older build fails too.
+VERSIONS = {"v5.7.0": "d7552fb3cdc05e9f6426177d3328887304fce554"}
 PACKAGING_ABSENT = "packaging workflow not detected"
 NOT_APPLICABLE = {
     "Packaging": PACKAGING_ABSENT,
@@ -83,7 +81,7 @@ def validate(result: object, repository: str, commit: str) -> None:
             and check.get("error") is None
         ):
             continue
-        # In the pinned Scorecard builds every runtime-error constructor sets score=-1;
+        # In the pinned Scorecard build every runtime-error constructor sets score=-1;
         # JSON2 retains that score even though it omits CheckResult.Error.
         if (
             not isinstance(score, int)
