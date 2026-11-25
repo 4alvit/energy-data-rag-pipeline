@@ -32,7 +32,12 @@ CHECKS = frozenset(
     }
 )
 # The full upstream JSON includes all 18 checks, regardless of SARIF policy.
-VERSION = {"version": "v5.6.0", "commit": "61e84743356275f6ffca23b1b2f2cb945e19eb96"}
+# Each entry is a Scorecard build the pinned action embeds. A new upstream build
+# must be revalidated against the checks and result fields below before listing.
+VERSIONS = {
+    "v5.6.0": "61e84743356275f6ffca23b1b2f2cb945e19eb96",
+    "v5.7.0": "d7552fb3cdc05e9f6426177d3328887304fce554",
+}
 PACKAGING_ABSENT = "packaging workflow not detected"
 NOT_APPLICABLE = {
     "Packaging": PACKAGING_ABSENT,
@@ -48,7 +53,12 @@ def validate(result: object, repository: str, commit: str) -> None:
         raise TypeError("Scorecard JSON must be an object")
     if result.get("repo") != {"name": f"github.com/{repository}", "commit": commit}:
         raise ValueError("Scorecard analyzed a different repository or commit")
-    if result.get("scorecard") != VERSION:
+    scorecard = result.get("scorecard")
+    if (
+        not isinstance(scorecard, dict)
+        or set(scorecard) != {"version", "commit"}
+        or VERSIONS.get(scorecard.get("version")) != scorecard.get("commit")
+    ):
         raise ValueError("Scorecard version changed; revalidate the completeness contract")
     checks = result.get("checks")
     if not isinstance(checks, list):
@@ -73,7 +83,7 @@ def validate(result: object, repository: str, commit: str) -> None:
             and check.get("error") is None
         ):
             continue
-        # In pinned v5.6.0 every runtime-error constructor sets score=-1;
+        # In the pinned Scorecard builds every runtime-error constructor sets score=-1;
         # JSON2 retains that score even though it omits CheckResult.Error.
         if (
             not isinstance(score, int)
