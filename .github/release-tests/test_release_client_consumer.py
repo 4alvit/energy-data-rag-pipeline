@@ -167,6 +167,20 @@ class ClientTest(unittest.TestCase):
             self.assertEqual((assets / "package.tar.gz").read_bytes(), b"newer")
             self.assertEqual((assets / "fuzz-report.json").read_bytes(), b"report")
 
+    def test_collection_accepts_a_single_artifact_extracted_at_the_root(self):
+        """One matching artifact is extracted into .release-download directly."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / ".release-download"
+            source.mkdir()
+            (source / "SHA256SUMS").write_text("checksums")
+            (source / "package.tar.gz").write_bytes(b"bytes")
+            with mock.patch.object(client, "ROOT", root):
+                client.collect_assets()
+            assets = root / ".release-assets"
+            self.assertEqual((assets / "package.tar.gz").read_bytes(), b"bytes")
+            self.assertEqual((assets / "SHA256SUMS").read_text(), "checksums")
+
     def test_missing_download_names_the_rerun_that_restores_it(self):
         """A failed-only rerun downloads nothing; report that, not a bad path."""
         with tempfile.TemporaryDirectory() as temp:
