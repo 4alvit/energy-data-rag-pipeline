@@ -22,14 +22,19 @@ REPO = "owner/project"
 SHA = "a" * 40
 
 
-def complete() -> dict[str, Any]:
-    """Build v5.6.0 output independently of the validator's contract constants."""
+PINS = {
+    # Hard-coded so the contract is checked against the upstream builds rather
+    # than against the validator's own table.
+    "v5.6.0": "61e84743356275f6ffca23b1b2f2cb945e19eb96",
+    "v5.7.0": "d7552fb3cdc05e9f6426177d3328887304fce554",
+}
+
+
+def complete(version: str = "v5.6.0") -> dict[str, Any]:
+    """Build one pinned build's output independently of the validator's constants."""
     return {
         "repo": {"name": f"github.com/{REPO}", "commit": SHA},
-        "scorecard": {
-            "version": "v5.6.0",
-            "commit": "61e84743356275f6ffca23b1b2f2cb945e19eb96",
-        },
+        "scorecard": {"version": version, "commit": PINS[version]},
         "checks": [
             {"name": name, "score": 10}
             for name in (
@@ -64,6 +69,21 @@ class ScorecardJSONTests(unittest.TestCase):
             result = complete()
             result["checks"][0]["score"] = score
             guard.validate(result, REPO, SHA)
+
+    def test_every_pinned_build_is_accepted_with_its_own_commit(self) -> None:
+        for version, commit in PINS.items():
+            with self.subTest(version=version):
+                guard.validate(complete(version), REPO, SHA)
+                mismatched = complete(version)
+                mismatched["scorecard"]["commit"] = "b" * 40
+                with self.assertRaises(ValueError):
+                    guard.validate(mismatched, REPO, SHA)
+            other = next(name for name, sha in PINS.items() if sha != commit)
+            with self.subTest(crossed=other):
+                crossed = complete(version)
+                crossed["scorecard"]["commit"] = PINS[other]
+                with self.assertRaises(ValueError):
+                    guard.validate(crossed, REPO, SHA)
 
     def test_upstream_packaging_not_applicable_is_preserved(self) -> None:
         result = complete()
@@ -165,6 +185,12 @@ class ScorecardJSONTests(unittest.TestCase):
                 {"version": "v5.5.0", "commit": "c395761df6afe1a69e476bc60a013a94bcbc153f"},
             ),
             ("scorecard", {"version": "v5.6.0", "commit": "b" * 40}),
+            (
+                "scorecard",
+                {"version": "v5.7.0", "commit": "61e84743356275f6ffca23b1b2f2cb945e19eb96"},
+            ),
+            ("scorecard", {"version": "v5.6.0", "commit": PINS["v5.6.0"], "extra": True}),
+            ("scorecard", ["v5.6.0"]),
         ):
             with self.subTest(field=field, value=value):
                 result = complete()
