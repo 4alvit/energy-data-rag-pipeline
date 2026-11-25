@@ -111,12 +111,18 @@ and independent semantic assertions alongside the existing unit tests.
 
 Fresh release package uploads and RC fuzz evidence use
 `-run-<run_id>-attempt-<run_attempt>` names. Candidate and final collection
-select only matching artifacts from the current run and attempt.
+download every attempt of the triggering run and keep each artifact's newest
+attempt, so **Re-run failed jobs** publishes with the uploads that succeeded
+before the failure.
 
-Before publication starts, use **Re-run all jobs** only if the allocator and
-release policy permit reuse of that run's reservation. Recreate every required
-input in the same attempt; failed-only or individual retries can leave inputs
-missing, and older artifacts must not fill those gaps.
+Packages, build receipts and the RC fuzz report are accepted from any earlier
+attempt of the same repository, source commit and workflow run. Run ID, source
+SHA and the frozen version plan are still checked exactly; a later attempt,
+another run or another source never matches. A successful validation job that a
+rerun reports with its original clocks must repeat an execution an earlier
+attempt of the same run recorded unchanged. Use **Re-run all jobs** when the
+retained inputs expired or the failure happened after publication started, and
+only if the allocator and release policy permit reuse of that reservation.
 
 For a fresh candidate or final build, once publication has started
 (`begin_publication`), or its external publication result is partial or uncertain,
@@ -134,17 +140,19 @@ acceptance remain separate release prerequisites. See the shared
 [evidence contract](rc-fuzzing.md).
 
 The native PR checks still reuse the build adapter. Their four exact
-`native-cell-<product>-<arch>-attempt-<attempt>` inputs and gate behavior are
-unchanged. Within the release pipeline, native validation delegates to its
-existing release gate; the final package artifact alone gains the run suffix.
+`native-cell-<product>-<arch>-attempt-<attempt>` uploads stay attempt-scoped, and
+assembly selects each cell's newest attempt of the same run before validating
+it. Within the release pipeline, native validation delegates to its existing
+release gate; the final package artifact alone gains the run suffix.
 
 ### Package receipt identity
 
 Fresh publication verifies each staged package receipt against the independently
-supplied repository, source commit, workflow run and attempt. Receipts created
-before this migration, or offline without an Actions identity, cannot qualify a
-fresh publication. Run all required producers in one complete workflow attempt
-after migration; an earlier attempt cannot fill missing inputs.
+supplied repository, source commit and workflow run, at or before the current
+attempt. Receipts created before this migration, or offline without an Actions
+identity, cannot qualify a fresh publication. A failed-only rerun may publish
+packages an earlier attempt produced; rerun a producer when its receipt is
+missing.
 
 Historical promotion and retained-evidence validation keep their existing checks.
 Receipt coverage validates the staged files; the expected packages and platforms
@@ -157,15 +165,16 @@ See the shared [receipt migration guide](https://github.com/victron-venus/venus-
 
 `versioning.required_build_receipts` declares the exact package and signature
 receipt filenames required by this project's final publisher. Each authenticated
-receipt must match the repository, source commit, workflow run and attempt. A
-missing producer or an unexpected receipt stops fresh publication, even when the
-remaining packages are valid. RC fuzz evidence is checked separately; pre-signing
+receipt must match the repository, source commit and workflow run, from an
+attempt at or before the current one. A missing producer or an unexpected
+receipt stops fresh publication, even when the remaining packages are valid. RC fuzz evidence is checked separately; pre-signing
 checks do not require a signature receipt that has not been created yet.
 
-Before publication begins, rerun all required producers only when the allocator
+Before publication begins, rerun the failed producers only when the allocator
 and release policy permit reusing that reservation. After publication begins or
 its outcome is uncertain, inspect existing tags, releases and assets before a
-policy-authorized new run; never reset the ledger or mix earlier-attempt packages.
+policy-authorized new run; never reset the ledger or accept a later-attempt or
+cross-run receipt.
 Historical RC promotion keeps its accepted source policy. Keep this explicit
 inventory aligned with producer changes; it does not replace package-format,
 signature or device acceptance checks.

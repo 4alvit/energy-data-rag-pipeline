@@ -76,6 +76,7 @@ class LedgerGitHub(legacy_tests.FakeGitHub):  # pylint: disable=too-many-instanc
         self.evidence_by_run = {}
         self.evidence_archives = {}
         self.jobs_by_run = {}
+        self.jobs_by_attempt = {}
 
     def create_release_once(self, body):
         """The in-memory API models the normal successful create response."""
@@ -139,7 +140,11 @@ class LedgerGitHub(legacy_tests.FakeGitHub):  # pylint: disable=too-many-instanc
 
     def pages(self, path, field=None):
         if path.startswith("actions/runs/") and path.endswith("/jobs"):
-            run_id = int(path.split("/")[2])
+            parts = path.split("/")
+            key = (int(parts[2]), int(parts[4])) if len(parts) > 4 else None
+            if key in self.jobs_by_attempt:
+                return copy.deepcopy(self.jobs_by_attempt[key])
+            run_id = int(parts[2])
             if run_id in self.jobs_by_run:
                 return copy.deepcopy(self.jobs_by_run[run_id])
         if path.startswith("actions/runs/") and path.endswith("/artifacts"):
@@ -748,16 +753,44 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         self.assertEqual(self.gh.writes, [])
 
 
-    def test_partial_rerun_rejects_prior_attempt_package_before_publication(self):
+    def failed_only_rerun(self, attempt=2):
+        """Model a partial retry: the successful producers keep their executions."""
+        executed = copy.deepcopy(self.gh.jobs)
+        for job in executed:
+            job.update(
+                run_attempt=1,
+                started_at="2026-09-12T01:01:00Z",
+                completed_at="2026-09-12T01:03:00Z",
+                steps=[{
+                    "name": "Validate fixture", "status": "completed",
+                    "conclusion": "success",
+                    "started_at": "2026-09-12T01:01:30Z",
+                    "completed_at": "2026-09-12T01:02:30Z",
+                }],
+            )
+        self.gh.runs[99].update(
+            run_attempt=attempt, run_started_at="2026-09-12T02:00:00Z"
+        )
+        os.environ["GITHUB_RUN_ATTEMPT"] = str(attempt)
+        self.gh.jobs = [{**copy.deepcopy(job), "run_attempt": attempt} for job in executed]
+        self.gh.jobs_by_attempt[(99, 1)] = executed
+
+
+    def test_partial_rerun_publishes_the_prior_attempt_packages(self):
+        """A failed-only retry re-executes the publisher and keeps its build receipts."""
         lifecycle.prepare(self.args)
         self.build_current()
-        self.fresh_attempt()
-        ledger = copy.deepcopy(self.gh.ledger)
-        with self.assertRaisesRegex(ValueError, "different package producer attempt"):
-            lifecycle.publish_versioned(self.args)
-        self.assertEqual(self.gh.writes, [])
-        self.assertEqual(self.gh.ledger, ledger)
-        self.assertFalse(rc.EVIDENCE.exists())
+        self.failed_only_rerun()
+        result = lifecycle.publish_versioned(self.args)
+        self.assertEqual(result["status"], "published")
+        manifest = json.loads(rc.EVIDENCE.read_bytes())
+        self.assertEqual(manifest["run_attempt"], 2)
+        self.assertEqual(manifest["run_id"], 99)
+        self.assertEqual(manifest["source_sha"], SHA)
+        self.assertEqual(
+            [item["name"] for item in manifest["build_receipts"]],
+            ["release-inputs-linux.json"],
+        )
 
 
     def test_complete_current_attempt_packages_publish_normally(self):
@@ -2081,9 +2114,31 @@ class LifecycleTests(unittest.TestCase):  # pylint: disable=too-many-public-meth
         self.assertEqual(self.gh.ledger, ledger)
         self.assertFalse(rc.EVIDENCE.exists())
 
-    def test_complete_receipt_names_do_not_authorize_a_previous_attempt(self):
-        self.require_build_receipts(["release-inputs-linux.json"])
-        self.test_partial_rerun_rejects_prior_attempt_package_before_publication()
+    def test_partial_rerun_still_rejects_foreign_or_later_receipts(self):
+        lifecycle.prepare(self.args)
+        self.build_current()
+        self.failed_only_rerun()
+        writes = copy.deepcopy(self.gh.writes)
+        ledger = copy.deepcopy(self.gh.ledger)
+        path = Path(self.args.assets) / "release-inputs-linux.json"
+        original = json.loads(path.read_bytes())
+        for changed in (
+            {"run_id": 100},
+            {"source_sha": "b" * 40},
+            {"run_attempt": 3},
+        ):
+            with self.subTest(changed=changed):
+                path.write_bytes(receipt.canonical(
+                    {**original, "producer": {**original["producer"], **changed}}
+                ))
+                with self.assertRaisesRegex(
+                    ValueError, "different package producer attempt"
+                ):
+                    lifecycle.publish_versioned(self.args)
+                self.assertEqual(self.gh.writes, writes)
+                self.assertEqual(self.gh.ledger, ledger)
+                self.assertFalse(rc.EVIDENCE.exists())
+        path.write_bytes(receipt.canonical(original))
 
     def test_validation_receipt_cannot_satisfy_required_build_inventory(self):
         policy = {"versioning": {"required_build_receipts": ["release-inputs-linux.json"]}}

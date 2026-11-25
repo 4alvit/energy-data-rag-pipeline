@@ -28,6 +28,7 @@ VERSION = re.compile(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\Z", re.ASC
 RC = re.compile(
     r"v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))-rc\.([1-9]\d*)\Z", re.ASCII
 )
+UPLOAD = re.compile(r"(?P<artifact>.+)-attempt-(?P<attempt>[1-9]\d*)\Z", re.ASCII)
 
 
 def run(*args: str, capture: bool = False) -> str:
@@ -242,6 +243,27 @@ def package(args: argparse.Namespace, config: dict) -> None:
     run("bash", script, version, args.channel)
 
 
+def newest_uploads(source: Path) -> list[Path]:
+    """Select each downloaded artifact's newest attempt of this workflow run.
+
+    A failed-only rerun executes only the failed jobs, so the uploads of the jobs
+    that succeeded stay in an earlier attempt. Older attempts of the same
+    artifact never contribute bytes to the newest one.
+    """
+    selected: dict[str, tuple[int, Path]] = {}
+    for entry in sorted(source.iterdir(), key=lambda path: path.name):
+        if entry.is_symlink():
+            raise ValueError(f"Symlink asset: {entry}")
+        if not entry.is_dir():
+            raise ValueError(f"Unexpected download entry: {entry.name}")
+        matched = UPLOAD.fullmatch(entry.name)
+        artifact = matched["artifact"] if matched else entry.name
+        attempt = int(matched["attempt"]) if matched else 0
+        if artifact not in selected or attempt > selected[artifact][0]:
+            selected[artifact] = (attempt, entry)
+    return [path for _, path in selected.values()]
+
+
 def collect_assets() -> None:
     """Flatten downloaded CI artifacts using only fixed repository directories."""
     source = ROOT / ".release-download"
@@ -252,20 +274,23 @@ def collect_assets() -> None:
         )
     if not source.is_dir():
         raise ValueError(
-            "No build artifacts were downloaded for this attempt; a failed-only "
-            "rerun leaves the jobs that upload them untouched, so re-run all jobs"
+            "No build artifacts were downloaded for this run; the uploads expired "
+            "or never happened, so re-run all jobs"
         )
     files = []
     seen = set()
-    for file in source.rglob("*"):
-        if file.is_symlink():
-            raise ValueError(f"Symlink asset: {file}")
-        if not file.is_file():
-            continue
-        if file.name.casefold() in seen:
-            raise ValueError(f"Duplicate asset basename across platforms: {file.name}")
-        seen.add(file.name.casefold())
-        files.append(file)
+    for upload in newest_uploads(source):
+        for file in upload.rglob("*"):
+            if file.is_symlink():
+                raise ValueError(f"Symlink asset: {file}")
+            if not file.is_file():
+                continue
+            if file.name.casefold() in seen:
+                raise ValueError(
+                    f"Duplicate asset basename across platforms: {file.name}"
+                )
+            seen.add(file.name.casefold())
+            files.append(file)
     if not files:
         raise ValueError("No build assets were downloaded")
     destination.mkdir(exist_ok=False)

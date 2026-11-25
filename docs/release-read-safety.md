@@ -3,7 +3,7 @@
 This project carries two focused fixes from the shared release toolkit:
 
 - [Bounded GET recovery](https://github.com/victron-venus/venus-os-ci-toolkit/commit/f6b7d4dfbe44158663d6d3da8c3092932d59253a): make at most three total attempts (the initial request and up to two retries) for recognized transport failures and HTTP 500, 502, 503 or 504 responses. Metadata attempts have a 30-second limit; whole-asset and Actions ZIP attempts have a 120-second limit. Failed response bytes are discarded. The [response-header refinement](https://github.com/victron-venus/venus-os-ci-toolkit/commit/0260529c7f1aef8da030e02c4a5ee7e49dab181f) distinguishes real HTTP denials from status-shaped payload text without copying the response body. Authentication, certificate, missing-resource and rate-limit errors are not retried; writes remain single attempts.
-- [Current-attempt validation](https://github.com/victron-venus/venus-os-ci-toolkit/commit/ae0b6f54b19256c1495c821fb70145eaab6be04e): on a rerun, require successful validation jobs to start at or after the exact attempt start, with ordered job times and executed steps contained within their job. A new job ID or attempt number cannot make a copied earlier success current.
+- [Current-attempt validation](https://github.com/victron-venus/venus-os-ci-toolkit/commit/ae0b6f54b19256c1495c821fb70145eaab6be04e): on a rerun, a successful validation job must start at or after the exact attempt start with ordered job times and executed steps contained within their job, or repeat unchanged an execution an earlier attempt of the same run recorded. A new job ID or attempt number cannot make an unrecorded earlier success current, and another run never matches.
 
 These changes are a partial backport, not a full toolkit upgrade. The existing
 policy revision, shared workflow pins, download API, artifact restrictions and
@@ -37,5 +37,7 @@ dependency bundle rather than replacing `release_control.py` alone.
 
 After a terminal release infrastructure failure, inspect existing tags, assets
 and active runs before retrying. If the release policy permits reuse before
-publication starts, use **Re-run all jobs** at the unchanged source. Earlier
-attempt results cannot fill missing validation in a later attempt.
+publication starts, re-running failed jobs publishes with the uploads and
+receipts of the attempt that produced them at the unchanged source. A missing
+successful job, expired upload or consumed build number still needs the
+recovery in the release runbook rather than a partial rerun.
