@@ -243,25 +243,33 @@ def package(args: argparse.Namespace, config: dict) -> None:
     run("bash", script, version, args.channel)
 
 
-def newest_uploads(source: Path) -> list[Path]:
-    """Select each downloaded artifact's newest attempt of this workflow run.
+def download_attempt(entry: Path) -> tuple[str, int] | None:
+    """Identify an artifact directory that carries its workflow attempt number."""
+    matched = UPLOAD.fullmatch(entry.name) if entry.is_dir() else None
+    return (matched["artifact"], int(matched["attempt"])) if matched else None
+
+
+def downloaded_entries(source: Path) -> list[Path]:
+    """Keep each downloaded artifact's newest attempt of this workflow run.
 
     A failed-only rerun executes only the failed jobs, so the uploads of the jobs
     that succeeded stay in an earlier attempt. Older attempts of the same
-    artifact never contribute bytes to the newest one.
+    artifact never contribute bytes to the newest one. A single artifact is
+    extracted directly into the download root instead of its own directory.
     """
-    selected: dict[str, tuple[int, Path]] = {}
+    chosen: dict[str, tuple[int, Path]] = {}
+    direct: list[Path] = []
     for entry in sorted(source.iterdir(), key=lambda path: path.name):
         if entry.is_symlink():
             raise ValueError(f"Symlink asset: {entry}")
-        if not entry.is_dir():
-            raise ValueError(f"Unexpected download entry: {entry.name}")
-        matched = UPLOAD.fullmatch(entry.name)
-        artifact = matched["artifact"] if matched else entry.name
-        attempt = int(matched["attempt"]) if matched else 0
-        if artifact not in selected or attempt > selected[artifact][0]:
-            selected[artifact] = (attempt, entry)
-    return [path for _, path in selected.values()]
+        attempt = download_attempt(entry)
+        if attempt is None:
+            direct.append(entry)
+            continue
+        artifact, number = attempt
+        if artifact not in chosen or number > chosen[artifact][0]:
+            chosen[artifact] = (number, entry)
+    return [*direct, *(path for _, path in chosen.values())]
 
 
 def collect_assets() -> None:
@@ -279,8 +287,8 @@ def collect_assets() -> None:
         )
     files = []
     seen = set()
-    for upload in newest_uploads(source):
-        for file in upload.rglob("*"):
+    for entry in downloaded_entries(source):
+        for file in entry.rglob("*") if entry.is_dir() else (entry,):
             if file.is_symlink():
                 raise ValueError(f"Symlink asset: {file}")
             if not file.is_file():
