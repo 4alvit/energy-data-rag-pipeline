@@ -1,7 +1,9 @@
 """Keep OpenSSF publication compatible and GitHub upload fail closed."""
 
+import importlib.util
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 
@@ -13,6 +15,46 @@ ALLOWED = {
     "ossf/scorecard-action",
     "step-security/harden-runner",
 }
+# The Scorecard build each pinned ossf/scorecard-action commit embeds. Bumping
+# the action without recording its build here fails the pin contract, and a
+# build the guard does not accept fails it as well.
+SCORECARD_ACTION_BUILDS = {
+    "23f22cd43608bae7a1f1fa2603d7314dee9538a5": "v5.7.0",
+}
+
+
+def load_guard():
+    """Load the completeness guard the analysis job runs before the upload."""
+    spec = importlib.util.spec_from_file_location(
+        "validate_scorecard_json", ROOT / "scripts/validate_scorecard_json.py"
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Cannot load the Scorecard guard for the pin contract")
+    guard = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard)
+    return guard
+
+
+def check_scorecard_pin(workflow, versions):
+    """Fail while a pinned action's Scorecard build is absent from the guard."""
+    scan = next(
+        step
+        for step in workflow["jobs"]["scorecard"]["steps"]
+        if step["uses"].startswith("ossf/scorecard-action@")
+    )
+    pinned = scan["uses"].split("@", 1)[1].split()[0]
+    if pinned not in SCORECARD_ACTION_BUILDS:
+        raise AssertionError(
+            f"ossf/scorecard-action@{pinned} has no recorded Scorecard build; "
+            "add it to SCORECARD_ACTION_BUILDS and to VERSIONS in "
+            "scripts/validate_scorecard_json.py"
+        )
+    build = SCORECARD_ACTION_BUILDS[pinned]
+    if build not in versions:
+        raise AssertionError(
+            f"ossf/scorecard-action@{pinned} embeds Scorecard {build}, which "
+            "scripts/validate_scorecard_json.py would reject before the upload"
+        )
 
 
 def validate(workflow):
@@ -71,6 +113,30 @@ class ScorecardWorkflowTests(unittest.TestCase):
 
     def test_publishing_and_guarded_upload_contract(self):
         validate(self.workflow)
+
+    def test_pinned_action_build_is_accepted_by_the_guard(self):
+        check_scorecard_pin(self.workflow, load_guard().VERSIONS)
+
+    def test_action_bump_without_recorded_build_fails(self):
+        for step in self.workflow["jobs"]["scorecard"]["steps"]:
+            if step["uses"].startswith("ossf/scorecard-action@"):
+                step["uses"] = "ossf/scorecard-action@" + "0" * 40
+        with self.assertRaises(AssertionError) as caught:
+            check_scorecard_pin(self.workflow, load_guard().VERSIONS)
+        self.assertIn("SCORECARD_ACTION_BUILDS", str(caught.exception))
+
+    def test_recorded_build_missing_from_the_guard_fails(self):
+        pinned = next(
+            step["uses"]
+            for step in self.workflow["jobs"]["scorecard"]["steps"]
+            if step["uses"].startswith("ossf/scorecard-action@")
+        ).split("@", 1)[1]
+        with (
+            patch.dict(SCORECARD_ACTION_BUILDS, {pinned: "v5.8.0"}),
+            self.assertRaises(AssertionError) as caught,
+        ):
+            check_scorecard_pin(self.workflow, load_guard().VERSIONS)
+        self.assertIn("v5.8.0", str(caught.exception))
 
     def test_custom_run_in_publishing_job_is_rejected(self):
         self.workflow["jobs"]["scorecard"]["steps"].append({"run": "python3 guard.py"})
