@@ -184,6 +184,31 @@ class NativeValidationTest(unittest.TestCase):
             self.assertEqual(upload["if-no-files-found"], "error")
             self.assertNotIn("overwrite", upload)
 
+    def test_release_collection_downloads_only_the_current_attempt(self):
+        """Receipts bind the producing attempt, so a retry cannot reuse older assets."""
+        jobs = workflow("release-pipeline.yml")["jobs"]
+        for name in ("candidate", "final"):
+            with self.subTest(job=name):
+                downloads = [
+                    step["with"]
+                    for step in jobs[name]["steps"]
+                    if step.get("uses", "").startswith("actions/download-artifact@")
+                    and step["with"].get("pattern", "").startswith("release-assets*")
+                ]
+                self.assertEqual(
+                    downloads,
+                    [
+                        {
+                            "pattern": (
+                                "release-assets*-run-${{ github.run_id }}"
+                                "-attempt-${{ github.run_attempt }}"
+                            ),
+                            "path": ".release-download",
+                            "merge-multiple": "false",
+                        }
+                    ],
+                )
+
     def test_release_owned_build_remains_a_required_publication_dependency(self):
         release = workflow("release-pipeline.yml")
         self.assertEqual(set(release["on"]), {"push", "schedule", "workflow_dispatch"})

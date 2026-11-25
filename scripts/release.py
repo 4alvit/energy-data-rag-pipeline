@@ -246,9 +246,14 @@ def collect_assets() -> None:
     """Flatten downloaded CI artifacts using only fixed repository directories."""
     source = ROOT / ".release-download"
     destination = ROOT / ".release-assets"
-    if source.is_symlink() or not source.is_dir() or destination.is_symlink():
+    if source.is_symlink() or destination.is_symlink():
         raise ValueError(
             "Artifact directories must be real directories inside the checkout"
+        )
+    if not source.is_dir():
+        raise ValueError(
+            "No build artifacts were downloaded for this attempt; a failed-only "
+            "rerun leaves the jobs that upload them untouched, so re-run all jobs"
         )
     files = []
     seen = set()

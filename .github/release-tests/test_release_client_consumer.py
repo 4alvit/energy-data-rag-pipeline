@@ -145,6 +145,20 @@ class ClientTest(unittest.TestCase):
                 client.arguments()
             self.assertEqual(error.exception.code, 2)
 
+    def test_missing_download_names_the_rerun_that_restores_it(self):
+        """A failed-only rerun downloads nothing; report that, not a bad path."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with (
+                mock.patch.object(client, "ROOT", root),
+                self.assertRaises(ValueError) as error,
+            ):
+                client.collect_assets()
+            message = str(error.exception)
+            self.assertIn("re-run all jobs", message)
+            self.assertNotIn("real directories", message)
+            self.assertFalse((root / ".release-assets").exists())
+
     def test_collection_rejects_symlink_escape_before_creating_output(self):
         """Reject a download-root symlink rather than reading outside the checkout."""
         with tempfile.TemporaryDirectory() as temp:
