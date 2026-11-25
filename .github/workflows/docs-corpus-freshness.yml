@@ -19,6 +19,7 @@ concurrency:
 env:
   PYTHON_VERSION: '3.12'
   REFRESH_BRANCH: automation/docs-corpus-refresh
+  AUTOMERGE_LABEL: automerge
 jobs:
   freshness:
     name: Regenerate docs-corpus
@@ -75,13 +76,13 @@ jobs:
       - name: Open or update the refresh pull request
         if: ${{ steps.drift.outputs.drifted == 'true' }}
         env:
-          GH_TOKEN: ${{ secrets.BOT_PAT || github.token }}
+          GH_TOKEN: ${{ secrets.BOT_PAT }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch -c "$REFRESH_BRANCH"
+          git switch -C "$REFRESH_BRANCH"
           git add docs-corpus/corpus.json docs-corpus/README.md
           git commit -m "docs: regenerate documentation corpus"
           gh auth setup-git
@@ -95,15 +96,22 @@ jobs:
           number=$(gh pr list --head "$REFRESH_BRANCH" --state open --json number --jq '.[0].number // empty')
           if [ -n "$number" ]; then
             gh pr edit "$number" --body "$body"
-            url=$(gh pr view "$number" --json url --jq .url)
           else
-            url=$(gh pr create --base "$DEFAULT_BRANCH" --head "$REFRESH_BRANCH" \
-              --title "docs: regenerate documentation corpus" --body "$body")
+            gh pr create --base "$DEFAULT_BRANCH" --head "$REFRESH_BRANCH" \
+              --title "docs: regenerate documentation corpus" --body "$body" \
+              --label "$AUTOMERGE_LABEL"
+            number=$(gh pr list --head "$REFRESH_BRANCH" --state open --json number --jq '.[0].number')
           fi
+          # Re-adding an existing label is a no-op; it arms .github/workflows/auto-merge.yml,
+          # which requests native auto-merge and lets GitHub merge once the gate reviews and
+          # checks pass. The PR author is the BOT_PAT account, so it clears the allowlist.
+          gh pr edit "$number" --add-label "$AUTOMERGE_LABEL"
+          url=$(gh pr view "$number" --json url --jq .url)
           {
             echo "### Documentation corpus is stale"
             echo "The committed corpus no longer matches \`docs/*.md\` or \`README.md\`."
             echo "Refresh pull request: $url"
+            echo "Auto-merge is armed through the \`$AUTOMERGE_LABEL\` label, so the refresh lands without a manual merge."
             echo "This job fails on purpose: publishing stops on a stale corpus, so drift must be visible the moment it lands."
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1
