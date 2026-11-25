@@ -100,20 +100,13 @@ jobs:
         run: python3 scripts/version_plan.py sync --root . --plan .release-plan.json
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: native-cell-rag-amd64-attempt-${{ github.run_attempt }}
-          path: native-inputs/rag-amd64
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: native-cell-rag-arm64-attempt-${{ github.run_attempt }}
-          path: native-inputs/rag-arm64
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: native-cell-fcc-amd64-attempt-${{ github.run_attempt }}
-          path: native-inputs/fcc-amd64
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: native-cell-fcc-arm64-attempt-${{ github.run_attempt }}
-          path: native-inputs/fcc-arm64
+          pattern: native-cell-*-attempt-*
+          path: native-attempts
+          merge-multiple: false
+      - name: Select each cell's newest uploaded attempt
+        run: >-
+          python3 scripts/native_containers.py select --inputs native-attempts
+          --output native-inputs
       - name: Assemble exact candidate assets without rebuilding
         env:
           VERSION: ${{ inputs.version }}
