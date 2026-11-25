@@ -7,7 +7,7 @@ aiosignal==1.4.0
 annotated-doc==0.0.6
 annotated-types==0.8.0
 anyio==4.16.0
-attrs==25.4.0
+attrs==26.1.0
 audioop-lts==0.2.2
 certifi==2026.10.23
 cffi==2.1.1 ; platform_python_implementation != 'PyPy'
@@ -53,9 +53,9 @@ pydantic-core==2.50.4
 pydantic-extra-types==2.11.1
 pydantic-settings==2.16.3
 pygments==2.21.0
-pyobjc-core==12.2.2 ; sys_platform == 'darwin'
-pyobjc-framework-cocoa==12.2.2 ; sys_platform == 'darwin'
-pyobjc-framework-quartz==12.2.2 ; sys_platform == 'darwin'
+pyobjc-core==13.1 ; sys_platform == 'darwin'
+pyobjc-framework-cocoa==13.1 ; sys_platform == 'darwin'
+pyobjc-framework-quartz==13.1 ; sys_platform == 'darwin'
 pysocks==1.7.1
 pystray==0.19.5 ; sys_platform == 'darwin' or sys_platform == 'win32'
 python-dotenv==1.2.4
@@ -65,11 +65,11 @@ pyyaml==6.0.3
 referencing==0.37.0
 regex==2026.11.9
 requests==2.34.2
-rich==14.3.4
+rich==15.0.0
 rich-toolkit==0.20.6
 rignore==0.8.1
 rpds-py==2026.9.1
-sentry-sdk==2.75.0
+sentry-sdk==3.0.1
 shellingham==1.5.4
 six==1.17.0 ; sys_platform == 'darwin' or sys_platform == 'win32'
 sniffio==1.3.1
